@@ -1,0 +1,1 @@
+C:\Users\goldk\metroidvania-game\game\target\debug\metroidvania-game.exe: C:\Users\goldk\metroidvania-game\game\src\game\mod.rs C:\Users\goldk\metroidvania-game\game\src\game\player.rs C:\Users\goldk\metroidvania-game\game\src\main.rs
