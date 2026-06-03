@@ -1,14 +1,29 @@
 mod player;
+mod screens;
+mod ui;
+mod story;
 
 use macroquad::prelude::*;
 
 use player::Player;
+use screens::startup_ui::draw_startup_overlay;
+use story::StoryPhase;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum StartupState {
+    Splash,
+    MainMenu,
+    Done,
+}
 
 pub struct GameState {
+    startup_state: StartupState,
     player: Player,
     width: f32,
     height: f32,
     floor_y: f32,
+    startup_menu_role: usize,
+    story: StoryPhase,
 }
 
 impl GameState {
@@ -20,75 +35,100 @@ impl GameState {
         let player = Player::new(width / 2.0, height / 2.0);
 
         Self {
+            startup_state: StartupState::Splash,
             player,
             width,
             height,
             floor_y,
+            startup_menu_role: 0,
+            story: StoryPhase::new_game(),
         }
     }
 
     pub fn update(&mut self, dt: f32) {
-        const GRAVITY_UP: f32 = 800.0;
-        const GRAVITY_DOWN: f32 = 1500.0;
-        const JUMP_FORCE: f32 = -600.0;
-        const JUMP_CUT: f32 = 0.1;
-        const MOVE_SPEED: f32 = 300.0;
-        
-        if is_key_down(KeyCode::Right) | is_key_down(KeyCode::D) {
-            self.player.vel_x = MOVE_SPEED;
-        } else if is_key_down(KeyCode::Left) | is_key_down(KeyCode::A) {
-            self.player.vel_x = -MOVE_SPEED;
-        } else {
-            self.player.vel_x = 0.0;
+        if matches!(self.story, StoryPhase::Playing) {
+            self.player.update(self.width, self.height, self.floor_y, dt);
         }
 
-        if is_key_pressed(KeyCode::Space) {
-            self.player.jump_buffer_time = 0.15;
+        if !matches!(self.startup_state, StartupState::Done) {
+            self.handle_startup_input();
+            return;
         }
-        if self.player.jump_buffer_time > 0.0 {
-            self.player.jump_buffer_time -= dt;
-        }
-        if self.player.jump_buffer_time > 0.0 && self.player.on_ground {
-            self.player.vel_y = JUMP_FORCE;
-            self.player.is_jumping = true;
-            self.player.on_ground = false;
-            self.player.jump_buffer_time = 0.0;
-        }
-        if is_key_released(KeyCode::Space) && self.player.vel_y < 0.0 {
-            self.player.vel_y *= JUMP_CUT;
-        }
-
-        let gravity = if self.player.vel_y < 0.0 { GRAVITY_UP } else { GRAVITY_DOWN };
-        
-        self.player.vel_y += gravity * dt;
-
-        self.player.x += self.player.vel_x * dt;
-        self.player.y += self.player.vel_y * dt;
-
-        if self.player.y >= self.floor_y {
-            self.player.y = self.floor_y;
-            self.player.vel_y = 0.0;
-            self.player.on_ground = true;
-            self.player.is_jumping = false;
-        } else {
-            self.player.on_ground = false;
-        }
-
-        self.player.x = clamp(self.player.x, 16.0, self.width - 16.0);
-        self.player.y = clamp(self.player.y, 16.0, self.height - 16.0);
     }
 
     pub fn draw(&self) {
-        clear_background(DARKGRAY);
+        if !matches!(self.startup_state, StartupState::Done) {
+            draw_startup_overlay(
+                &self.startup_state,
+                self.startup_menu_role,
+                self.width,
+                self.height,
+            );
+            return;
+        }
 
-        draw_circle(self.player.x, self.player.y, 16.0, WHITE);
+        if matches!(self.story, StoryPhase::Playing) {
+            clear_background(DARKGRAY);
 
-        draw_rectangle(
-            0.0,
-            self.floor_y + 16.0,
-            self.width,
-            30.0,
-            BROWN,
-        );
+            self.player.draw();
+
+            draw_rectangle(
+                0.0,
+                self.floor_y + 16.0,
+                self.width,
+                30.0,
+                BROWN,
+            );
+        }
+    }
+
+    fn handle_startup_input(&mut self) {
+        match &self.startup_state {
+            StartupState::Splash => {
+                if get_last_key_pressed().is_some() {
+                    self.startup_menu_role = 0;
+                    self.startup_state = StartupState::MainMenu;
+                }
+            }
+            StartupState::MainMenu => {
+                if is_key_pressed(KeyCode::Up) | is_key_pressed(KeyCode::W) {
+                    if self.startup_menu_role == 0 {
+                        self.startup_menu_role = 1;
+                    } else {
+                        self.startup_menu_role -= 1;
+                    }
+                }
+
+                if is_key_pressed(KeyCode::S) | is_key_pressed(KeyCode::Down) {
+                    if self.startup_menu_role == 1 {
+                        self.startup_menu_role = 0;
+                    } else {
+                        self.startup_menu_role += 1;
+                    }
+                }
+
+                if is_key_pressed(KeyCode::Escape) {
+                    self.startup_menu_role = 0;
+                    self.startup_state = StartupState::Splash;
+                }
+
+                if is_key_pressed(KeyCode::Enter) {
+                    match self.startup_menu_role {
+                        0 => {
+                            // Play
+                            self.startup_menu_role = 0;
+                            self.startup_state = StartupState::Done;
+                            self.story = StoryPhase::Playing;
+                        }
+                        1 => {
+                            // Exit game
+                            std::process::exit(0);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 }
