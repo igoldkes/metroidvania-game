@@ -14,7 +14,7 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut state = game::GameState::new();
+    let mut state = game::GameState::new().await;
 
     loop {
         let dt = get_frame_time();

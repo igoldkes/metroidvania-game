@@ -1,5 +1,23 @@
 use macroquad::prelude::*;
 
+enum XDirection {
+    Right,
+    Left,
+}
+
+enum YDirection {
+    None,
+    Up,
+    Down,
+}
+
+enum AttackDirection {
+    Right,
+    Left,
+    Up,
+    Down,
+}
+
 pub struct Player {
     pub x: f32,
     pub y: f32,
@@ -9,6 +27,11 @@ pub struct Player {
     pub on_ground: bool,
     pub jump_buffer_time: f32,
     pub paused: bool,
+    pub is_attacking: bool,
+    pub x_direction: XDirection,
+    pub y_direction: YDirection,
+    pub attack_direction: AttackDirection,
+    pub attack_buffer_time: f32,
 }
 
 impl Player {
@@ -22,6 +45,11 @@ impl Player {
             on_ground: true,
             jump_buffer_time: 0.0,
             paused: false,
+            is_attacking: false,
+            x_direction: XDirection::Right,
+            y_direction: YDirection::None,
+            attack_direction: AttackDirection::Right,
+            attack_buffer_time: 0.0,
         }
     }
 
@@ -33,6 +61,20 @@ impl Player {
         const MOVE_SPEED: f32 = 300.0;
         
         if !self.paused {
+            if is_key_pressed(KeyCode::Right) | is_key_pressed(KeyCode::D) {
+                self.x_direction = XDirection::Right;
+            }
+            if is_key_pressed(KeyCode::Left) | is_key_pressed(KeyCode::A) {
+                self.x_direction = XDirection::Left;
+            }
+            if is_key_down(KeyCode::Up) | is_key_down(KeyCode::W) {
+                self.y_direction = YDirection::Up;
+            } else if is_key_down(KeyCode::Down) | is_key_down(KeyCode::S) {
+                self.y_direction = YDirection::Down;
+            } else {
+                self.y_direction = YDirection::None;
+            }
+
             if is_key_down(KeyCode::Right) | is_key_down(KeyCode::D) {
                 self.vel_x = MOVE_SPEED;
             } else if is_key_down(KeyCode::Left) | is_key_down(KeyCode::A) {
@@ -55,6 +97,35 @@ impl Player {
             }
             if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
                 self.vel_y *= JUMP_CUT;
+            }
+
+            if is_key_pressed(KeyCode::Semicolon) && !self.is_attacking {
+                self.is_attacking = true;
+                self.attack_buffer_time = 0.3;
+                self.attack_direction = match self.y_direction {
+                    YDirection::Up => {
+                        AttackDirection::Up
+                    }
+                    YDirection::Down => {
+                        AttackDirection::Down
+                    }
+                    YDirection::None => {
+                        match self.x_direction {
+                            XDirection::Right => {
+                                AttackDirection::Right
+                            }
+                            XDirection::Left => {
+                                AttackDirection::Left
+                            }
+                        }
+                    }
+                }
+            }
+            if self.attack_buffer_time > 0.0 {
+                self.is_attacking = true;
+                self.attack_buffer_time -= dt;
+            } else {
+                self.is_attacking = false;
             }
         } else {
             if self.on_ground {
@@ -85,5 +156,46 @@ impl Player {
 
     pub fn draw(&self) {
         draw_circle(self.x, self.y, 16.0, WHITE);
+        
+        if self.is_attacking {
+            match self.attack_direction {
+                AttackDirection::Right => {
+                    draw_rectangle(
+                        self.x + 16.0,
+                        self.y - 6.0,
+                        40.0,
+                        12.0,
+                        RED,
+                    );
+                }
+                AttackDirection::Left => {
+                    draw_rectangle(
+                        self.x - 56.0,
+                        self.y - 6.0,
+                        40.0,
+                        12.0,
+                        RED,
+                    );
+                }
+                AttackDirection::Up => {
+                    draw_rectangle(
+                        self.x - 6.0,
+                        self.y - 56.0,
+                        12.0,
+                        40.0,
+                        RED,
+                    );
+                }
+                AttackDirection::Down => {
+                    draw_rectangle(
+                        self.x - 6.0,
+                        self.y + 16.0,
+                        12.0,
+                        40.0,
+                        RED,
+                    );
+                }
+            }
+        }
     }
 }

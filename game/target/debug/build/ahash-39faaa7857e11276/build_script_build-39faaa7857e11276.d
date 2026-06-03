@@ -1,0 +1,5 @@
+C:\Users\goldk\metroidvania-game\game\target\debug\build\ahash-39faaa7857e11276\build_script_build-39faaa7857e11276.d: C:\Users\goldk\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\ahash-0.8.12\build.rs
+
+C:\Users\goldk\metroidvania-game\game\target\debug\build\ahash-39faaa7857e11276\build_script_build-39faaa7857e11276.exe: C:\Users\goldk\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\ahash-0.8.12\build.rs
+
+C:\Users\goldk\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\ahash-0.8.12\build.rs:

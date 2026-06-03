@@ -4,6 +4,7 @@ mod ui;
 mod story;
 
 use macroquad::prelude::*;
+use macroquad::audio::{load_sound, play_sound, play_sound_once, stop_sound, set_sound_volume, PlaySoundParams, Sound};
 
 use player::Player;
 use screens::startup_ui::draw_startup_overlay;
@@ -34,15 +35,22 @@ pub struct GameState {
     pause_menu_role: usize,
     story: StoryPhase,
     paused: bool,
+    // assets
+    menu_click_sound: Sound,
+    // settings toggles
+    menu_clicks_settings_toggle: bool,
+
 }
 
 impl GameState {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         let width = screen_width();
         let height = screen_height();
         let floor_y = height - 100.0;
 
         let player = Player::new(width / 2.0, height / 2.0);
+
+        let menu_click_sound = load_sound("assets/audio_assets/menu_click_sound.wav").await.unwrap();
 
         Self {
             startup_state: StartupState::Splash,
@@ -55,6 +63,8 @@ impl GameState {
             pause_menu_role: 0,
             story: StoryPhase::new_game(),
             paused: false,
+            menu_click_sound,
+            menu_clicks_settings_toggle: true,
         }
     }
 
@@ -63,6 +73,9 @@ impl GameState {
             self.player.update(self.width, self.height, self.floor_y, dt);
 
             if is_key_pressed(KeyCode::Escape) {
+                if self.menu_clicks_settings_toggle {
+                    play_sound_once(&self.menu_click_sound);
+                }
                 self.paused = !self.paused;
                 self.player.paused = self.paused;
                 self.pause_menu_state = PauseMenuState::Menu { pause_menu_role: self.pause_menu_role };
@@ -109,6 +122,9 @@ impl GameState {
             }
 
             if is_key_pressed(KeyCode::W) | is_key_pressed(KeyCode::Up) {
+                if self.menu_clicks_settings_toggle {
+                    play_sound_once(&self.menu_click_sound);
+                }
                 if self.pause_menu_role == 0 {
                     self.pause_menu_role = 2;
                 } else {
@@ -117,6 +133,9 @@ impl GameState {
             }
 
             if is_key_pressed(KeyCode::S) | is_key_pressed(KeyCode::Down) {
+                if self.menu_clicks_settings_toggle {
+                    play_sound_once(&self.menu_click_sound);
+                }
                 if self.pause_menu_role == 2 {
                     self.pause_menu_role = 0;
                 } else {
@@ -125,6 +144,9 @@ impl GameState {
             }
 
             if is_key_pressed(KeyCode::Enter) {
+                if self.menu_clicks_settings_toggle {
+                    play_sound_once(&self.menu_click_sound);
+                }
                 match self.pause_menu_role {
                     0 => {
                         // Resume game
@@ -154,12 +176,18 @@ impl GameState {
         match &self.startup_state {
             StartupState::Splash => {
                 if get_last_key_pressed().is_some() {
+                    if self.menu_clicks_settings_toggle {
+                        play_sound_once(&self.menu_click_sound);
+                    }
                     self.startup_menu_role = 0;
                     self.startup_state = StartupState::MainMenu;
                 }
             }
             StartupState::MainMenu => {
                 if is_key_pressed(KeyCode::Up) | is_key_pressed(KeyCode::W) {
+                    if self.menu_clicks_settings_toggle {
+                        play_sound_once(&self.menu_click_sound);
+                    }
                     if self.startup_menu_role == 0 {
                         self.startup_menu_role = 1;
                     } else {
@@ -168,6 +196,9 @@ impl GameState {
                 }
 
                 if is_key_pressed(KeyCode::S) | is_key_pressed(KeyCode::Down) {
+                    if self.menu_clicks_settings_toggle {
+                        play_sound_once(&self.menu_click_sound);
+                    }
                     if self.startup_menu_role == 1 {
                         self.startup_menu_role = 0;
                     } else {
@@ -176,11 +207,17 @@ impl GameState {
                 }
 
                 if is_key_pressed(KeyCode::Escape) {
+                    if self.menu_clicks_settings_toggle {
+                        play_sound_once(&self.menu_click_sound);
+                    }
                     self.startup_menu_role = 0;
                     self.startup_state = StartupState::Splash;
                 }
 
                 if is_key_pressed(KeyCode::Enter) {
+                    if self.menu_clicks_settings_toggle {
+                        play_sound_once(&self.menu_click_sound);
+                    }
                     match self.startup_menu_role {
                         0 => {
                             // Play
