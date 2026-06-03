@@ -9,9 +9,10 @@ use super::super::StartupState;
 pub fn draw_startup_overlay(
     startup_state: &StartupState,
     menu_role: usize,
-    width: f32,
-    height: f32,
 ) {
+    let width = screen_width();
+    let height = screen_height();
+    
     draw_rectangle(0.0, 0.0, width, height, Color::from_rgba(0, 0, 0, 180));
 
     let prefs = UiPreferences::default();
@@ -21,7 +22,7 @@ pub fn draw_startup_overlay(
     let ty = scaled_type(&TypeScale::default(), scale);
 
     let preferred_height = match startup_state {
-        StartupState::Splash => 220.0,
+        StartupState::Splash => 180.0,
         StartupState::MainMenu => 220.0,
         _ => 220.0,
     };

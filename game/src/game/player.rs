@@ -8,6 +8,7 @@ pub struct Player {
     pub is_jumping: bool,
     pub on_ground: bool,
     pub jump_buffer_time: f32,
+    pub paused: bool,
 }
 
 impl Player {
@@ -20,6 +21,7 @@ impl Player {
             is_jumping: false,
             on_ground: true,
             jump_buffer_time: 0.0,
+            paused: false,
         }
     }
 
@@ -30,28 +32,35 @@ impl Player {
         const JUMP_CUT: f32 = 0.1;
         const MOVE_SPEED: f32 = 300.0;
         
-        if is_key_down(KeyCode::Right) | is_key_down(KeyCode::D) {
-            self.vel_x = MOVE_SPEED;
-        } else if is_key_down(KeyCode::Left) | is_key_down(KeyCode::A) {
-            self.vel_x = -MOVE_SPEED;
-        } else {
-            self.vel_x = 0.0;
-        }
+        if !self.paused {
+            if is_key_down(KeyCode::Right) | is_key_down(KeyCode::D) {
+                self.vel_x = MOVE_SPEED;
+            } else if is_key_down(KeyCode::Left) | is_key_down(KeyCode::A) {
+                self.vel_x = -MOVE_SPEED;
+            } else {
+                self.vel_x = 0.0;
+            }
 
-        if is_key_pressed(KeyCode::Space) {
-            self.jump_buffer_time = 0.15;
-        }
-        if self.jump_buffer_time > 0.0 {
-            self.jump_buffer_time -= dt;
-        }
-        if self.jump_buffer_time > 0.0 && self.on_ground {
-            self.vel_y = JUMP_FORCE;
-            self.is_jumping = true;
-            self.on_ground = false;
-            self.jump_buffer_time = 0.0;
-        }
-        if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
-            self.vel_y *= JUMP_CUT;
+            if is_key_pressed(KeyCode::Space) {
+                self.jump_buffer_time = 0.15;
+            }
+            if self.jump_buffer_time > 0.0 {
+                self.jump_buffer_time -= dt;
+            }
+            if self.jump_buffer_time > 0.0 && self.on_ground {
+                self.vel_y = JUMP_FORCE;
+                self.is_jumping = true;
+                self.on_ground = false;
+                self.jump_buffer_time = 0.0;
+            }
+            if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
+                self.vel_y *= JUMP_CUT;
+            }
+        } else {
+            if self.on_ground {
+                self.vel_x = 0.0;
+                self.vel_y = 0.0;
+            }
         }
 
         let gravity = if self.vel_y < 0.0 { GRAVITY_UP } else { GRAVITY_DOWN };
