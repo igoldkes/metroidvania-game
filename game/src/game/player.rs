@@ -32,10 +32,12 @@ pub struct Player {
     pub y_direction: YDirection,
     pub attack_direction: AttackDirection,
     pub attack_buffer_time: f32,
+    jackie_paper_right_texture: Texture2D,
+    jackie_paper_left_texture: Texture2D,
 }
 
 impl Player {
-    pub fn new(x: f32, y: f32) -> Self {
+    pub fn new(x: f32, y: f32, jackie_paper_right_texture: Texture2D, jackie_paper_left_texture: Texture2D) -> Self {
         Self {
             x,
             y,
@@ -50,6 +52,8 @@ impl Player {
             y_direction: YDirection::None,
             attack_direction: AttackDirection::Right,
             attack_buffer_time: 0.0,
+            jackie_paper_right_texture,
+            jackie_paper_left_texture,
         }
     }
 
@@ -155,7 +159,33 @@ impl Player {
     }
 
     pub fn draw(&self) {
-        draw_circle(self.x, self.y, 16.0, WHITE);
+        match self.x_direction {
+            XDirection::Right => {
+                draw_texture_ex(
+                    &self.jackie_paper_right_texture,
+                    self.x - 50.0,
+                    self.y - 80.0,
+                    WHITE,
+                    DrawTextureParams {
+                        dest_size: Some(vec2(100.0, 100.0)),
+                        ..Default::default()
+                    },
+                );
+            }
+            XDirection::Left => {
+                draw_texture_ex(
+                    &self.jackie_paper_left_texture,
+                    self.x - 50.0,
+                    self.y - 80.0,
+                    WHITE,
+                    DrawTextureParams {
+                        dest_size: Some(vec2(100.0, 100.0)),
+                        ..Default::default()
+                    },
+                );
+            }
+        }
+        //draw_circle(self.x, self.y, 16.0, WHITE);
         
         if self.is_attacking {
             match self.attack_direction {
