@@ -39,6 +39,10 @@ pub struct GameState {
     // assets
     jackie_paper_right_texture: Texture2D,
     jackie_paper_left_texture: Texture2D,
+    jackie_paper_up_right_texture: Texture2D,
+    jackie_paper_up_left_texture: Texture2D,
+    jackie_paper_down_right_texture: Texture2D,
+    jackie_paper_down_left_texture: Texture2D,
     menu_click_sound: Sound,
     // settings toggles
     menu_clicks_settings_toggle: bool,
@@ -53,8 +57,12 @@ impl GameState {
 
         let jackie_paper_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_right.png");
         let jackie_paper_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_left.png");
+        let jackie_paper_up_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_up_right.png");
+        let jackie_paper_up_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_up_left.png");
+        let jackie_paper_down_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_down_right.png");
+        let jackie_paper_down_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_down_left.png");
 
-        let player = Player::new(width / 2.0, height / 2.0, jackie_paper_right_texture.clone(), jackie_paper_left_texture.clone());
+        let player = Player::new(width / 2.0, height / 2.0, jackie_paper_right_texture.clone(), jackie_paper_left_texture.clone(), jackie_paper_up_right_texture.clone(), jackie_paper_up_left_texture.clone(), jackie_paper_down_right_texture.clone(), jackie_paper_down_left_texture.clone());
 
         let menu_click_sound = load_sound("assets/audio_assets/menu_click_sound.wav").await.unwrap();
 
@@ -71,6 +79,10 @@ impl GameState {
             paused: false,
             jackie_paper_right_texture,
             jackie_paper_left_texture,
+            jackie_paper_up_right_texture,
+            jackie_paper_up_left_texture,
+            jackie_paper_down_right_texture,
+            jackie_paper_down_left_texture,
             menu_click_sound,
             menu_clicks_settings_toggle: true,
         }

@@ -34,10 +34,14 @@ pub struct Player {
     pub attack_buffer_time: f32,
     jackie_paper_right_texture: Texture2D,
     jackie_paper_left_texture: Texture2D,
+    jackie_paper_up_right_texture: Texture2D,
+    jackie_paper_up_left_texture: Texture2D,
+    jackie_paper_down_right_texture: Texture2D,
+    jackie_paper_down_left_texture: Texture2D,
 }
 
 impl Player {
-    pub fn new(x: f32, y: f32, jackie_paper_right_texture: Texture2D, jackie_paper_left_texture: Texture2D) -> Self {
+    pub fn new(x: f32, y: f32, jackie_paper_right_texture: Texture2D, jackie_paper_left_texture: Texture2D, jackie_paper_up_right_texture: Texture2D, jackie_paper_up_left_texture: Texture2D, jackie_paper_down_right_texture: Texture2D, jackie_paper_down_left_texture: Texture2D) -> Self {
         Self {
             x,
             y,
@@ -54,6 +58,10 @@ impl Player {
             attack_buffer_time: 0.0,
             jackie_paper_right_texture,
             jackie_paper_left_texture,
+            jackie_paper_up_right_texture,
+            jackie_paper_up_left_texture,
+            jackie_paper_down_right_texture,
+            jackie_paper_down_left_texture,
         }
     }
 
@@ -81,8 +89,10 @@ impl Player {
 
             if is_key_down(KeyCode::Right) | is_key_down(KeyCode::D) {
                 self.vel_x = MOVE_SPEED;
+                self.x_direction = XDirection::Right;
             } else if is_key_down(KeyCode::Left) | is_key_down(KeyCode::A) {
                 self.vel_x = -MOVE_SPEED;
+                self.x_direction = XDirection::Left;
             } else {
                 self.vel_x = 0.0;
             }
@@ -161,28 +171,84 @@ impl Player {
     pub fn draw(&self) {
         match self.x_direction {
             XDirection::Right => {
-                draw_texture_ex(
-                    &self.jackie_paper_right_texture,
-                    self.x - 50.0,
-                    self.y - 80.0,
-                    WHITE,
-                    DrawTextureParams {
-                        dest_size: Some(vec2(100.0, 100.0)),
-                        ..Default::default()
-                    },
-                );
+                match self.y_direction {
+                    YDirection::Up => {
+                        draw_texture_ex(
+                            &self.jackie_paper_up_right_texture,
+                            self.x - 50.0,
+                            self.y - 80.0,
+                            WHITE,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(100.0, 100.0)),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                    YDirection::Down => {
+                        draw_texture_ex(
+                            &self.jackie_paper_down_right_texture,
+                            self.x - 50.0,
+                            self.y - 80.0,
+                            WHITE,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(100.0, 100.0)),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                    YDirection::None => {
+                        draw_texture_ex(
+                            &self.jackie_paper_right_texture,
+                            self.x - 50.0,
+                            self.y - 80.0,
+                            WHITE,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(100.0, 100.0)),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                }
             }
             XDirection::Left => {
-                draw_texture_ex(
-                    &self.jackie_paper_left_texture,
-                    self.x - 50.0,
-                    self.y - 80.0,
-                    WHITE,
-                    DrawTextureParams {
-                        dest_size: Some(vec2(100.0, 100.0)),
-                        ..Default::default()
-                    },
-                );
+                match self.y_direction {
+                    YDirection::Up => {
+                        draw_texture_ex(
+                            &self.jackie_paper_up_left_texture,
+                            self.x - 50.0,
+                            self.y - 80.0,
+                            WHITE,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(100.0, 100.0)),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                    YDirection::Down => {
+                        draw_texture_ex(
+                            &self.jackie_paper_down_left_texture,
+                            self.x - 50.0,
+                            self.y - 80.0,
+                            WHITE,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(100.0, 100.0)),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                    YDirection::None => {
+                        draw_texture_ex(
+                            &self.jackie_paper_left_texture,
+                            self.x - 50.0,
+                            self.y - 80.0,
+                            WHITE,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(100.0, 100.0)),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                }
             }
         }
         //draw_circle(self.x, self.y, 16.0, WHITE);
