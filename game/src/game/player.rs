@@ -202,8 +202,6 @@ impl Player {
     }
 
     pub fn draw(&self) {
-        
-
         draw_rectangle(
             self.x,
             self.y - self.pheight as f32 * TILE_SIZE,
@@ -211,6 +209,130 @@ impl Player {
             self.pheight as f32 * TILE_SIZE,
             Color::from_rgba(255, 0, 0, 80),
         );
+
+        match self.x_direction {
+            XDirection::Right => {
+                match self.y_direction {
+                    YDirection::Up => {
+                        draw_texture_ex(
+                            &self.jackie_paper_up_right_texture,
+                            self.x - 33.0,
+                            self.y - 86.0,
+                            WHITE,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(90.0, 90.0)),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                    YDirection::Down => {
+                        draw_texture_ex(
+                            &self.jackie_paper_down_right_texture,
+                            self.x - 33.0,
+                            self.y - 86.0,
+                            WHITE,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(90.0, 90.0)),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                    YDirection::None => {
+                        draw_texture_ex(
+                            &self.jackie_paper_right_texture,
+                            self.x - 33.0,
+                            self.y - 86.0,
+                            WHITE,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(90.0, 90.0)),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                }
+            }
+            XDirection::Left => {
+                match self.y_direction {
+                    YDirection::Up => {
+                        draw_texture_ex(
+                            &self.jackie_paper_up_left_texture,
+                            self.x - 26.0,
+                            self.y - 86.0,
+                            WHITE,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(90.0, 90.0)),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                    YDirection::Down => {
+                        draw_texture_ex(
+                            &self.jackie_paper_down_left_texture,
+                            self.x - 26.0,
+                            self.y - 86.0,
+                            WHITE,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(90.0, 90.0)),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                    YDirection::None => {
+                        draw_texture_ex(
+                            &self.jackie_paper_left_texture,
+                            self.x - 26.0,
+                            self.y - 86.0,
+                            WHITE,
+                            DrawTextureParams {
+                                dest_size: Some(vec2(90.0, 90.0)),
+                                ..Default::default()
+                            },
+                        );
+                    }
+                }
+            }
+        }
+
+        if self.is_attacking {
+            match self.attack_direction {
+                AttackDirection::Right => {
+                    draw_rectangle(
+                        self.x + self.pwidth * TILE_SIZE,
+                        self.y - self.pheight / 2.0 * TILE_SIZE - 6.0,
+                        40.0,
+                        12.0,
+                        Color::from_rgba(0, 255, 0, 80),
+                    );
+                }
+                AttackDirection::Left => {
+                    draw_rectangle(
+                        self.x - 40.0,
+                        self.y - self.pheight / 2.0 * TILE_SIZE - 6.0,
+                        40.0,
+                        12.0,
+                        Color::from_rgba(0, 255, 0, 80),
+                    );
+                }
+                AttackDirection::Up => {
+                    draw_rectangle(
+                        self.x + self.pwidth / 2.0 * TILE_SIZE - 6.0,
+                        self.y - self.pheight * TILE_SIZE - 40.0,
+                        12.0,
+                        40.0,
+                        Color::from_rgba(0, 255, 0, 80),
+                    );
+                }
+                AttackDirection::Down => {
+                    draw_rectangle(
+                        self.x + self.pwidth / 2.0 * TILE_SIZE - 6.0,
+                        self.y,
+                        12.0,
+                        40.0,
+                        Color::from_rgba(0, 255, 0, 80),
+                    );
+                }
+            }
+        }
     }
 
     pub fn draw1(&self) {
@@ -344,51 +466,6 @@ impl Player {
                         Color::from_rgba(0, 255, 0, 80),
                     );
                 }
-            }
-        }
-    }
-
-    fn check_collisions(&mut self, room: &mut Room) {
-        let bottom_y = ((self.y - 0.0) / TILE_SIZE - 1.0) as i32;
-        let top_y = ((self.y - self.pheight * TILE_SIZE) / TILE_SIZE) as i32;
-        let left_x = (self.x / TILE_SIZE) as i32;
-        let right_x = ((self.x + self.pwidth * TILE_SIZE) / TILE_SIZE) as i32;
-
-        if self.vel_y >= 0.0 {
-            // falling
-            let next_bottom = ((self.y) / TILE_SIZE) as i32;
-            if room.is_solid(left_x, next_bottom) || room.is_solid(right_x, next_bottom) {
-                self.y = next_bottom as f32 * TILE_SIZE;
-                self.vel_y = 0.0;
-                self.on_ground = true;
-            } else {
-                self.on_ground = false;
-            }
-        } else if self.vel_y < 0.0 {
-            // jumping
-            let next_top = ((self.y - self.pheight * TILE_SIZE) / TILE_SIZE) as i32;
-            if room.is_solid(left_x, next_top) || room.is_solid(right_x, next_top) {
-                self.y = ((next_top + 1) as f32 + self.pheight) * TILE_SIZE + 1.0;
-                self.vel_y = 0.0;
-                self.is_jumping = false;
-            }
-        }
-
-        if self.vel_x > 0.0 {
-            // moving right
-            let next_right = ((self.x + self.pwidth * TILE_SIZE) / TILE_SIZE) as i32;
-            if room.is_solid(next_right, top_y) || room.is_solid(next_right, bottom_y) {
-                self.x = (next_right as f32 - self.pwidth) * TILE_SIZE;
-                self.vel_x = 0.0;
-                self.hitting_wall_right = true;
-            }
-        } else if self.vel_x < 0.0 {
-            // moving left
-            let next_left = ((self.x) / TILE_SIZE) as i32;
-            if room.is_solid(next_left, top_y) || room.is_solid(next_left, bottom_y) {
-                self.x = (next_left + 1) as f32 * TILE_SIZE;
-                self.vel_x = 0.0;
-                self.hitting_wall_left = true;
             }
         }
     }
