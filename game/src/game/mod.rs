@@ -30,9 +30,16 @@ enum PauseMenuState {
 }
 
 #[derive(Clone, Debug)]
+enum Tile {
+    None,
+    BrownBrick,
+    GrayBrick,
+}
+
+#[derive(Clone, Debug)]
 pub struct Room {
-    tiles: Vec<((i32, i32), bool)>,
-    tile_map: HashMap<(i32, i32), bool>,
+    tiles: Vec<((i32, i32), Tile)>,
+    tile_map: HashMap<(i32, i32), Tile>,
     width: i32,
     height: i32,
 }
@@ -41,14 +48,18 @@ impl Room {
     pub fn load_room(path: &str) -> Self {
         let mut x: i32 = 0;
         let mut y: i32 = 0;
-        let mut tiles: Vec<((i32, i32), bool)> = Vec::new();
-        let mut tile_map: HashMap<(i32, i32), bool> = HashMap::new();
+        let mut tiles: Vec<((i32, i32), Tile)> = Vec::new();
+        let mut tile_map: HashMap<(i32, i32), Tile> = HashMap::new();
         let room_file = std::fs::read_to_string(path).unwrap();
         for line in room_file.lines() {
             for c in line.chars() {
-                let is_solid = if c == '#' { true } else { false };
-                tiles.push(((x, y), is_solid));
-                tile_map.insert((x, y), is_solid);
+                let tile = match c {
+                    '#' => Tile::GrayBrick,
+                    '$' => Tile::BrownBrick,
+                    _ => Tile::None,
+                };
+                tiles.push(((x, y), tile.clone()));
+                tile_map.insert((x, y), tile.clone());
                 x += 1;
             }
             x = 0;
@@ -67,7 +78,12 @@ impl Room {
         if self.tile_map.get(&(x, y)).is_none() {
             eprintln!("is_solid called with ({}, {}) which is not in the map", x, y);
         }
-        *self.tile_map.get(&(x, y)).unwrap_or(&false)
+        match *self.tile_map.get(&(x, y)).unwrap() {
+            Tile::None => false,
+            Tile::BrownBrick => true,
+            Tile::GrayBrick => true,
+        }
+        //*self.tile_map.get(&(x, y)).unwrap_or(&false)
     }
 }
 
@@ -340,14 +356,26 @@ impl GameState {
 
     fn draw_tiles(&self) {
         for tile in self.current_room.tiles.clone() {
-            if tile.1 {
-                draw_rectangle(
-                    tile.0.0 as f32 * TILE_SIZE,
-                    tile.0.1 as f32 * TILE_SIZE,
-                    TILE_SIZE,
-                    TILE_SIZE,
-                    BROWN,
-                );
+            match tile.1 {
+                Tile::BrownBrick => {
+                    draw_rectangle(
+                        tile.0.0 as f32 * TILE_SIZE,
+                        tile.0.1 as f32 * TILE_SIZE,
+                        TILE_SIZE,
+                        TILE_SIZE,
+                        BROWN,
+                    );
+                }
+                Tile::GrayBrick => {
+                    draw_rectangle(
+                        tile.0.0 as f32 * TILE_SIZE,
+                        tile.0.1 as f32 * TILE_SIZE,
+                        TILE_SIZE,
+                        TILE_SIZE,
+                        GRAY,
+                    );
+                }
+                Tile::None => {}
             }
         }
         //let size = self.current_room.tiles.len();

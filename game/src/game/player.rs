@@ -22,6 +22,12 @@ enum AttackDirection {
     Down,
 }
 
+enum Tile {
+    None,
+    BrownBrick,
+    GrayBrick,
+}
+
 pub struct Player {
     pub current_room: Room,
     pub x: f32,
