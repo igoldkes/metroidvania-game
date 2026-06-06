@@ -7,6 +7,7 @@ use super::super::ui::{draw_panel, PanelStyle};
 use super::super::PauseMenuState;
 
 pub fn draw_pause_menu_overlay( menu_state: PauseMenuState ) {
+    set_default_camera();
     match menu_state {
         PauseMenuState::Menu { pause_menu_role } => {
             let prefs = UiPreferences::default();

@@ -7,10 +7,14 @@ mod assets;
 use macroquad::prelude::*;
 use macroquad::audio::{load_sound, play_sound, play_sound_once, stop_sound, set_sound_volume, PlaySoundParams, Sound};
 
+use std::collections::HashMap;
+
 use player::Player;
 use screens::startup_ui::draw_startup_overlay;
 use screens::overlays_ui::draw_pause_menu_overlay;
 use story::StoryPhase;
+
+const TILE_SIZE: f32 = 32.0;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum StartupState {
@@ -25,10 +29,54 @@ enum PauseMenuState {
     Menu { pause_menu_role: usize },
 }
 
+#[derive(Clone, Debug)]
+pub struct Room {
+    tiles: Vec<((i32, i32), bool)>,
+    tile_map: HashMap<(i32, i32), bool>,
+    width: i32,
+    height: i32,
+}
+
+impl Room {
+    pub fn load_room(path: &str) -> Self {
+        let mut x: i32 = 0;
+        let mut y: i32 = 0;
+        let mut tiles: Vec<((i32, i32), bool)> = Vec::new();
+        let mut tile_map: HashMap<(i32, i32), bool> = HashMap::new();
+        let room_file = std::fs::read_to_string(path).unwrap();
+        for line in room_file.lines() {
+            for c in line.chars() {
+                let is_solid = if c == '#' { true } else { false };
+                tiles.push(((x, y), is_solid));
+                tile_map.insert((x, y), is_solid);
+                x += 1;
+            }
+            x = 0;
+            y += 1;
+        }
+        let height = y;
+        let width = tiles.len() as i32 / (y + 1) - 1;
+
+        Self { tiles, tile_map, width, height }
+    }
+
+    pub fn is_solid(&self, x: i32, y: i32) -> bool {
+        if x < 0 || y < 0 || x > self.width || y > self.height {
+            return true;
+        }
+        if self.tile_map.get(&(x, y)).is_none() {
+            eprintln!("is_solid called with ({}, {}) which is not in the map", x, y);
+        }
+        *self.tile_map.get(&(x, y)).unwrap_or(&false)
+    }
+}
+
 pub struct GameState {
     startup_state: StartupState,
     pause_menu_state: PauseMenuState,
     player: Player,
+    current_room: Room,
+    cam: Camera2D,
     width: f32,
     height: f32,
     floor_y: f32,
@@ -53,7 +101,7 @@ impl GameState {
     pub async fn new() -> Self {
         let width = screen_width();
         let height = screen_height();
-        let floor_y = height - 100.0;
+        let floor_y = height - 48.0;
 
         let jackie_paper_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_right.png");
         let jackie_paper_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_left.png");
@@ -62,7 +110,15 @@ impl GameState {
         let jackie_paper_down_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_down_right.png");
         let jackie_paper_down_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_down_left.png");
 
-        let player = Player::new(width / 2.0, height / 2.0, jackie_paper_right_texture.clone(), jackie_paper_left_texture.clone(), jackie_paper_up_right_texture.clone(), jackie_paper_up_left_texture.clone(), jackie_paper_down_right_texture.clone(), jackie_paper_down_left_texture.clone());
+        let current_room = Room::load_room("assets/rooms/room3.txt");
+
+        let player = Player::new(current_room.clone(), width / 2.0, height / 2.0, jackie_paper_right_texture.clone(), jackie_paper_left_texture.clone(), jackie_paper_up_right_texture.clone(), jackie_paper_up_left_texture.clone(), jackie_paper_down_right_texture.clone(), jackie_paper_down_left_texture.clone());
+
+        let cam = Camera2D {
+            target: vec2(width / 2.0, height / 2.0),
+            zoom: vec2(2.0 / width, 2.0 / height),
+            ..Default::default()
+        };
 
         let menu_click_sound = load_sound("assets/audio_assets/menu_click_sound.wav").await.unwrap();
 
@@ -70,6 +126,8 @@ impl GameState {
             startup_state: StartupState::Splash,
             pause_menu_state: PauseMenuState::None,
             player,
+            current_room,
+            cam,
             width,
             height,
             floor_y,
@@ -89,6 +147,9 @@ impl GameState {
     }
 
     pub fn update(&mut self, dt: f32) {
+        self.width = screen_width();
+        self.height = screen_height();
+
         if matches!(self.story, StoryPhase::Playing) {
             self.player.update(self.width, self.height, self.floor_y, dt);
 
@@ -120,15 +181,35 @@ impl GameState {
         if matches!(self.story, StoryPhase::Playing) {
             clear_background(DARKGRAY);
 
+            let target = vec2(
+                self.player.x + TILE_SIZE * self.player.pwidth / 2.0,
+                self.player.y - TILE_SIZE * self.player.pheight / 2.0 - 100.0,
+            );
+
+            self.cam.target.x = self.cam.target.x.lerp(target.x, 0.1);
+            self.cam.target.y = self.cam.target.y.lerp(target.y, 0.1);
+
+            //let cam = Camera2D {
+            //    target: vec2(
+            //        self.player.x + TILE_SIZE * self.player.pwidth / 2.0,
+            //        self.player.y - TILE_SIZE * self.player.pheight / 2.0,
+            //    ),
+            //    zoom: vec2(2.0 / self.width, 2.0 / self.height),
+            //    ..Default::default()
+            //};
+            set_camera(&self.cam);
+
             self.player.draw();
 
-            draw_rectangle(
-                0.0,
-                self.floor_y + 16.0,
-                self.width,
-                30.0,
-                BROWN,
-            );
+            self.draw_tiles();
+
+            //draw_rectangle(
+            //    0.0,
+            //    self.floor_y + 16.0,
+            //    self.width,
+            //    30.0,
+            //    RED,
+            //);
         }
 
         if self.paused {
@@ -254,6 +335,34 @@ impl GameState {
                 }
             }
             _ => {}
+        }
+    }
+
+    fn draw_tiles(&self) {
+        for tile in self.current_room.tiles.clone() {
+            if tile.1 {
+                draw_rectangle(
+                    tile.0.0 as f32 * TILE_SIZE,
+                    tile.0.1 as f32 * TILE_SIZE,
+                    TILE_SIZE,
+                    TILE_SIZE,
+                    BROWN,
+                );
+            }
+        }
+        //let size = self.current_room.tiles.len();
+        //draw_text(
+        //    &format!("{}", size),
+        //    500.0,
+        //    500.0,
+        //    30.0,
+        //    RED,
+        //);
+    }
+
+    fn draw_checkered_background(&self) {
+        for tile in self.current_room.tiles.clone() {
+            todo!();
         }
     }
 }
