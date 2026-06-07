@@ -1,0 +1,14 @@
+width,height    // in tiles, not pixels
+door1_id,door1_room_filepath,new_room_spawn_x_coordinate,new_room_spawn_y_coordinate~door2_id,new_room_filepath,new_room_spawn_x_coordinate,new_room_spawn_y_coordinate // e.g., D,assets/rooms/example.txt,X,Y // coordinates are in tiles, not pixels
+####################
+#                  # // example room data
+#  $$$             # // '#' = solid gray tile
+#            $     # // '$' = solid brown tile
+D    $$            # // 'D' = example door tile
+D                  #
+####################
+
+
+// note:    at the bottom of the VS Code window it shows what line and column your text-cursor is currently in
+//          if your the bottom of your text-cursor is the bottom of the player rectangle, then:
+//              x = col - 1,    y = line - 2 (in tiles)
