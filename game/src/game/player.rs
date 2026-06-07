@@ -28,6 +28,7 @@ pub enum RoomChange {
 }
 
 pub struct Player {
+    pub movement_blocked_buffer: f32,
     pub current_room: Room,
     pub room_change: RoomChange,
     pub x: f32,
@@ -58,6 +59,7 @@ pub struct Player {
 impl Player {
     pub fn new(current_room: Room, x: f32, y: f32, jackie_paper_right_texture: Texture2D, jackie_paper_left_texture: Texture2D, jackie_paper_up_right_texture: Texture2D, jackie_paper_up_left_texture: Texture2D, jackie_paper_down_right_texture: Texture2D, jackie_paper_down_left_texture: Texture2D) -> Self {
         Self {
+            movement_blocked_buffer: 0.0,
             current_room,
             room_change: RoomChange::None,
             x,
@@ -93,7 +95,11 @@ impl Player {
         const JUMP_CUT: f32 = 0.1;
         const MOVE_SPEED: f32 = 300.0;
         
-        if !self.paused {
+        if self.movement_blocked_buffer > 0.0 {
+            self.movement_blocked_buffer -= dt;
+        }
+
+        if !self.paused && self.movement_blocked_buffer <= 0.0 {
             if is_key_pressed(KeyCode::Right) || is_key_pressed(KeyCode::D) {
                 self.x_direction = XDirection::Right;
             }
@@ -505,6 +511,20 @@ impl Player {
                         println!("{}, identifier: {}", string, identifier);
                         self.room_change = RoomChange::Change { door: door.clone() };
                     }
+                } else {
+                    if self.current_room.is_door(next_right - 1, bottom_y) && self.current_room.is_door(next_right - 1, middle_y) && self.current_room.is_door(next_right - 1, top_y) {
+                        //std::process::exit(0);
+                        //todo!("load new room");
+                        let identifier = match self.current_room.tile_map.get(&(next_right - 1, bottom_y)).unwrap() {
+                            Tile::Door { identifier: c } => c,
+                            _ => &'z',
+                        };
+                        //println!("made it");
+                        let door = self.current_room.door_map.get(identifier).unwrap();
+                        let string = format!("{:?}", door);
+                        println!("{}, identifier: {}", string, identifier);
+                        self.room_change = RoomChange::Change { door: door.clone() };
+                    }
                 }
                 self.hitting_wall_right = false;
             }
@@ -518,6 +538,20 @@ impl Player {
             } else {
                 if self.on_ground {
                     if self.current_room.is_door(next_left + 1, bottom_y) && self.current_room.is_door(next_left + 1, middle_y) {
+                        println!("hello");
+                        //std::process::exit(0);
+                        //todo!("load new room");
+                        let identifier = match self.current_room.tile_map.get(&(next_left + 1, bottom_y)).unwrap() {
+                            Tile::Door { identifier: c } => c,
+                            _ => &'z',
+                        };
+                        let door = self.current_room.door_map.get(identifier).unwrap();
+                        let string = format!("{:?}", door);
+                        println!("{}", string);
+                        self.room_change = RoomChange::Change { door: door.clone() };
+                    }
+                } else {
+                    if self.current_room.is_door(next_left + 1, bottom_y) && self.current_room.is_door(next_left + 1, middle_y) && self.current_room.is_door(next_left + 1, top_y) {
                         println!("hello");
                         //std::process::exit(0);
                         //todo!("load new room");

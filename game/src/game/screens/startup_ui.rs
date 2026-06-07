@@ -54,7 +54,7 @@ pub fn draw_startup_overlay(
     match startup_state {
         StartupState::Splash => {
             draw_text(
-                "Metroidvania Game",
+                "Game",
                 x + row_pad_x,
                 y + row_h,
                 ty.headline,

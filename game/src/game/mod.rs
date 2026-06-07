@@ -148,6 +148,8 @@ pub struct GameState {
     jackie_paper_up_left_texture: Texture2D,
     jackie_paper_down_right_texture: Texture2D,
     jackie_paper_down_left_texture: Texture2D,
+    background_texture: Texture2D,
+    show_background: bool,
     menu_click_sound: Sound,
     // settings toggles
     menu_clicks_settings_toggle: bool,
@@ -166,6 +168,7 @@ impl GameState {
         let jackie_paper_up_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_up_left.png");
         let jackie_paper_down_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_down_right.png");
         let jackie_paper_down_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_down_left.png");
+        let background_texture = assets::load_background_texture("assets/graphics_assets/background.png");
 
         let current_room = Room::load_room("assets/rooms/room3.txt");
 
@@ -198,6 +201,8 @@ impl GameState {
             jackie_paper_up_left_texture,
             jackie_paper_down_right_texture,
             jackie_paper_down_left_texture,
+            background_texture,
+            show_background: false,
             menu_click_sound,
             menu_clicks_settings_toggle: true,
         }
@@ -240,7 +245,7 @@ impl GameState {
         }
 
         if matches!(self.story, StoryPhase::Playing) {
-            clear_background(DARKGRAY);
+            clear_background(BLACK);
 
             let target = vec2(
                 self.player.x + TILE_SIZE * self.player.pwidth / 2.0,
@@ -259,6 +264,19 @@ impl GameState {
             //    ..Default::default()
             //};
             set_camera(&self.cam);
+
+            if self.show_background {
+                draw_texture_ex(
+                    &self.background_texture,
+                    0.0,
+                    0.0,
+                    WHITE,
+                    DrawTextureParams {
+                        dest_size: Some(vec2(self.current_room.width as f32 * TILE_SIZE, self.current_room.height as f32 * TILE_SIZE)),
+                        ..Default::default()
+                    },
+                );
+            }
 
             self.player.draw();
 
@@ -421,13 +439,13 @@ impl GameState {
                     );
                 }
                 Tile::Door { .. } => {
-                    draw_rectangle(
-                        tile.0.0 as f32 * TILE_SIZE,
-                        tile.0.1 as f32 * TILE_SIZE,
-                        TILE_SIZE,
-                        TILE_SIZE,
-                        BLACK,
-                    );
+                    //draw_rectangle(
+                    //    tile.0.0 as f32 * TILE_SIZE,
+                    //    tile.0.1 as f32 * TILE_SIZE,
+                    //    TILE_SIZE,
+                    //    TILE_SIZE,
+                    //    BLACK,
+                    //);
                 }
                 Tile::None => {}
             }
@@ -450,6 +468,7 @@ impl GameState {
         self.player.current_room = new_room;
         self.player.x = door.spawn_x as f32 * TILE_SIZE;
         self.player.y = door.spawn_y as f32 * TILE_SIZE;
+        self.player.movement_blocked_buffer = 0.7;
     }
 }
 
