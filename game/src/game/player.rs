@@ -491,14 +491,15 @@ impl Player {
                 self.hitting_wall_right = true;
             } else {
                 if self.on_ground {
-                    if self.current_room.is_door(next_right, bottom_y) && self.current_room.is_door(next_right, middle_y) {
+                    if self.current_room.is_door(next_right - 1, bottom_y) && self.current_room.is_door(next_right - 1, middle_y) {
                         println!("hi");
                         //std::process::exit(0);
                         //todo!("load new room");
-                        let identifier = match self.current_room.tile_map.get(&(next_right, bottom_y)).unwrap() {
+                        let identifier = match self.current_room.tile_map.get(&(next_right - 1, bottom_y)).unwrap() {
                             Tile::Door { identifier: c } => c,
                             _ => &'z',
                         };
+                        //println!("made it");
                         let door = self.current_room.door_map.get(identifier).unwrap();
                         let string = format!("{:?}", door);
                         println!("{}, identifier: {}", string, identifier);
@@ -516,11 +517,11 @@ impl Player {
                 self.hitting_wall_left = true;
             } else {
                 if self.on_ground {
-                    if self.current_room.is_door(next_left, bottom_y) && self.current_room.is_door(next_left, middle_y) {
+                    if self.current_room.is_door(next_left + 1, bottom_y) && self.current_room.is_door(next_left + 1, middle_y) {
                         println!("hello");
                         //std::process::exit(0);
                         //todo!("load new room");
-                        let identifier = match self.current_room.tile_map.get(&(next_left, bottom_y)).unwrap() {
+                        let identifier = match self.current_room.tile_map.get(&(next_left + 1, bottom_y)).unwrap() {
                             Tile::Door { identifier: c } => c,
                             _ => &'z',
                         };
@@ -547,11 +548,11 @@ impl Player {
                 self.vel_y = 0.0;
                 self.on_ground = true;
             } else {
-                if self.current_room.is_door(left_x, next_bottom) && self.current_room.is_door(right_x, next_bottom) {
+                if self.current_room.is_door(left_x, next_bottom - 1) && self.current_room.is_door(right_x, next_bottom - 1) {
                     println!("heya");
                     //std::process::exit(0);
                     //todo!("load new room");
-                    let identifier = match self.current_room.tile_map.get(&(left_x, next_bottom)).unwrap() {
+                    let identifier = match self.current_room.tile_map.get(&(left_x, next_bottom - 1)).unwrap() {
                         Tile::Door { identifier: c } => c,
                         _ => &'z',
                     };
@@ -570,11 +571,11 @@ impl Player {
                 self.vel_y = 0.0;
                 //self.is_jumping = false;
             } else {
-                if self.current_room.is_door(left_x, next_top) && self.current_room.is_door(right_x, next_top) {
+                if self.current_room.is_door(left_x, next_top + 1) && self.current_room.is_door(right_x, next_top + 1) {
                     println!("bello");
                     //std::process::exit(0);
                     //todo!("load new room");
-                    let identifier = match self.current_room.tile_map.get(&(left_x, next_top)).unwrap() {
+                    let identifier = match self.current_room.tile_map.get(&(left_x, next_top + 1)).unwrap() {
                         Tile::Door { identifier: c } => c,
                         _ => &'z',
                     };

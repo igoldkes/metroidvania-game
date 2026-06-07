@@ -105,10 +105,11 @@ impl Room {
 
     pub fn is_solid(&self, x: i32, y: i32) -> bool {
         if x < 0 || y < 0 || x > self.width || y > self.height {
-            return true;
+            return false;
         }
         if self.tile_map.get(&(x, y)).is_none() {
             eprintln!("is_solid called with ({}, {}) which is not in the map", x, y);
+            return false;
         }
         match *self.tile_map.get(&(x, y)).unwrap() {
             Tile::None => false,
