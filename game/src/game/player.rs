@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-use super::Room;
+use super::{Room, Tile, Door};
 
 const TILE_SIZE: f32 = 32.0;
 
@@ -22,14 +22,14 @@ enum AttackDirection {
     Down,
 }
 
-enum Tile {
+pub enum RoomChange {
     None,
-    BrownBrick,
-    GrayBrick,
+    Change { door: Door },
 }
 
 pub struct Player {
     pub current_room: Room,
+    pub room_change: RoomChange,
     pub x: f32,
     pub y: f32,
     pub pwidth: f32, // in tiles
@@ -59,6 +59,7 @@ impl Player {
     pub fn new(current_room: Room, x: f32, y: f32, jackie_paper_right_texture: Texture2D, jackie_paper_left_texture: Texture2D, jackie_paper_up_right_texture: Texture2D, jackie_paper_up_left_texture: Texture2D, jackie_paper_down_right_texture: Texture2D, jackie_paper_down_left_texture: Texture2D) -> Self {
         Self {
             current_room,
+            room_change: RoomChange::None,
             x,
             y,
             pwidth: 1.0,
@@ -483,31 +484,27 @@ impl Player {
 
         if self.vel_x > 0.0 {
             // moving right
-            
             let next_right = ((self.x + self.pwidth * TILE_SIZE) / TILE_SIZE).floor() as i32;
-            draw_circle(
-                next_right as f32 * TILE_SIZE,
-                top_y as f32 * TILE_SIZE,
-                16.0,
-                RED,
-            );
-            draw_circle(
-                next_right as f32 * TILE_SIZE,
-                bottom_y as f32 * TILE_SIZE,
-                16.0,
-                RED,
-            );
-            draw_circle(
-                next_right as f32 * TILE_SIZE,
-                middle_y as f32 * TILE_SIZE,
-                16.0,
-                RED,
-            );
             if self.current_room.is_solid(next_right, top_y) || self.current_room.is_solid(next_right, bottom_y) || self.current_room.is_solid(next_right, middle_y) {
                 self.x = (next_right as f32) * TILE_SIZE - self.pwidth * TILE_SIZE;
                 self.vel_x = 0.0;
                 self.hitting_wall_right = true;
             } else {
+                if self.on_ground {
+                    if self.current_room.is_door(next_right, bottom_y) && self.current_room.is_door(next_right, middle_y) {
+                        println!("hi");
+                        //std::process::exit(0);
+                        //todo!("load new room");
+                        let identifier = match self.current_room.tile_map.get(&(next_right, bottom_y)).unwrap() {
+                            Tile::Door { identifier: c } => c,
+                            _ => &'z',
+                        };
+                        let door = self.current_room.door_map.get(identifier).unwrap();
+                        let string = format!("{:?}", door);
+                        println!("{}, identifier: {}", string, identifier);
+                        self.room_change = RoomChange::Change { door: door.clone() };
+                    }
+                }
                 self.hitting_wall_right = false;
             }
         } else if self.vel_x < 0.0 {
@@ -518,6 +515,21 @@ impl Player {
                 self.vel_x = 0.0;
                 self.hitting_wall_left = true;
             } else {
+                if self.on_ground {
+                    if self.current_room.is_door(next_left, bottom_y) && self.current_room.is_door(next_left, middle_y) {
+                        println!("hello");
+                        //std::process::exit(0);
+                        //todo!("load new room");
+                        let identifier = match self.current_room.tile_map.get(&(next_left, bottom_y)).unwrap() {
+                            Tile::Door { identifier: c } => c,
+                            _ => &'z',
+                        };
+                        let door = self.current_room.door_map.get(identifier).unwrap();
+                        let string = format!("{:?}", door);
+                        println!("{}", string);
+                        self.room_change = RoomChange::Change { door: door.clone() };
+                    }
+                }
                 self.hitting_wall_left = false;
             }
         }
@@ -535,6 +547,19 @@ impl Player {
                 self.vel_y = 0.0;
                 self.on_ground = true;
             } else {
+                if self.current_room.is_door(left_x, next_bottom) && self.current_room.is_door(right_x, next_bottom) {
+                    println!("heya");
+                    //std::process::exit(0);
+                    //todo!("load new room");
+                    let identifier = match self.current_room.tile_map.get(&(left_x, next_bottom)).unwrap() {
+                        Tile::Door { identifier: c } => c,
+                        _ => &'z',
+                    };
+                    let door = self.current_room.door_map.get(identifier).unwrap();
+                    let string = format!("{:?}", door);
+                    println!("{}", string);
+                    self.room_change = RoomChange::Change { door: door.clone() };
+                }
                 self.on_ground = false;
             }
         } else if self.vel_y < 0.0 {
@@ -544,6 +569,20 @@ impl Player {
                 self.y = ((next_top + 1) as f32 + self.pheight) * TILE_SIZE;
                 self.vel_y = 0.0;
                 //self.is_jumping = false;
+            } else {
+                if self.current_room.is_door(left_x, next_top) && self.current_room.is_door(right_x, next_top) {
+                    println!("bello");
+                    //std::process::exit(0);
+                    //todo!("load new room");
+                    let identifier = match self.current_room.tile_map.get(&(left_x, next_top)).unwrap() {
+                        Tile::Door { identifier: c } => c,
+                        _ => &'z',
+                    };
+                    let door = self.current_room.door_map.get(identifier).unwrap();
+                    let string = format!("{:?}", door);
+                    println!("{}", string);
+                    self.room_change = RoomChange::Change { door: door.clone() };
+                }
             }
         }
     }

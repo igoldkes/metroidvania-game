@@ -9,7 +9,7 @@ use macroquad::audio::{load_sound, play_sound, play_sound_once, stop_sound, set_
 
 use std::collections::HashMap;
 
-use player::Player;
+use player::{Player, RoomChange};
 use screens::startup_ui::draw_startup_overlay;
 use screens::overlays_ui::draw_pause_menu_overlay;
 use story::StoryPhase;
@@ -34,6 +34,24 @@ enum Tile {
     None,
     BrownBrick,
     GrayBrick,
+    Door { identifier: char },
+}
+
+#[derive(Clone, Debug)]
+struct Door {
+    pub room_path: String,
+    pub spawn_x: i32,
+    pub spawn_y: i32,
+}
+
+impl Door {
+    fn new_door(room_path: &str, spawn_x: i32, spawn_y: i32) -> Self {
+        Self {
+            room_path: String::from(room_path),
+            spawn_x,
+            spawn_y,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -42,6 +60,7 @@ pub struct Room {
     tile_map: HashMap<(i32, i32), Tile>,
     width: i32,
     height: i32,
+    door_map: HashMap<char, Door>,
 }
 
 impl Room {
@@ -51,11 +70,21 @@ impl Room {
         let mut tiles: Vec<((i32, i32), Tile)> = Vec::new();
         let mut tile_map: HashMap<(i32, i32), Tile> = HashMap::new();
         let room_file = std::fs::read_to_string(path).unwrap();
-        for line in room_file.lines() {
+        let mut lines = room_file.lines();
+        let line1 = lines.next().unwrap();
+        let line1_parts: Vec<&str> = line1.split(',').collect();
+        let string = format!("{:?}", line1_parts.clone());
+        //println!("{}", string);
+        let width: i32 = line1_parts[0].parse().unwrap();
+        let height: i32 = line1_parts[1].parse().unwrap();
+        let line2 = lines.next().unwrap();
+        let door_map: HashMap<char, Door> = door_parser(line2);
+        for line in lines {
             for c in line.chars() {
                 let tile = match c {
                     '#' => Tile::GrayBrick,
                     '$' => Tile::BrownBrick,
+                    _ if door_map.contains_key(&c) => Tile::Door { identifier: c },
                     _ => Tile::None,
                 };
                 tiles.push(((x, y), tile.clone()));
@@ -65,10 +94,13 @@ impl Room {
             x = 0;
             y += 1;
         }
-        let height = y;
-        let width = tiles.len() as i32 / (y + 1) - 1;
+        let height1 = y;
+        let width1 = tiles.len() as i32 / height1;
 
-        Self { tiles, tile_map, width, height }
+        //println!("width: {}, height: {}", width, height);
+        //println!("width1: {}, height1: {}", width1, height1);
+
+        Self { tiles, tile_map, width, height, door_map }
     }
 
     pub fn is_solid(&self, x: i32, y: i32) -> bool {
@@ -82,8 +114,16 @@ impl Room {
             Tile::None => false,
             Tile::BrownBrick => true,
             Tile::GrayBrick => true,
+            Tile::Door { .. } => false,
         }
         //*self.tile_map.get(&(x, y)).unwrap_or(&false)
+    }
+
+    pub fn is_door(&self, x: i32, y: i32) -> bool {
+        match *self.tile_map.get(&(x, y)).unwrap() {
+            Tile::Door { .. }=> true,
+            _ => false,
+        }
     }
 }
 
@@ -182,6 +222,10 @@ impl GameState {
         if !matches!(self.startup_state, StartupState::Done) {
             self.handle_startup_input();
             return;
+        }
+
+        if let RoomChange::Change { door } = &self.player.room_change {
+            self.change_room(&door.clone());
         }
     }
 
@@ -375,6 +419,15 @@ impl GameState {
                         GRAY,
                     );
                 }
+                Tile::Door { .. } => {
+                    draw_rectangle(
+                        tile.0.0 as f32 * TILE_SIZE,
+                        tile.0.1 as f32 * TILE_SIZE,
+                        TILE_SIZE,
+                        TILE_SIZE,
+                        BLACK,
+                    );
+                }
                 Tile::None => {}
             }
         }
@@ -388,9 +441,31 @@ impl GameState {
         //);
     }
 
-    fn draw_checkered_background(&self) {
-        for tile in self.current_room.tiles.clone() {
-            todo!();
-        }
+    fn change_room(&mut self, door: &Door) {
+        self.player.room_change = RoomChange::None;
+        let room_file = &door.room_path;
+        let new_room = Room::load_room(room_file);
+        self.current_room = new_room.clone();
+        self.player.current_room = new_room;
+        self.player.x = door.spawn_x as f32 * TILE_SIZE;
+        self.player.y = door.spawn_y as f32 * TILE_SIZE;
     }
+}
+
+fn door_parser(line: &str) -> HashMap<char, Door> {
+    //todo!("parse a line from a room file: split on tabs to separate doors, split on commas to separate each door into 1) identifier 2) file path for connected room 3) x coordinate in tiles for the player's spawnpoint in the new room 4) y coordinate in tiles for the player's spawnpoint in the new room")
+    let mut door_map: HashMap<char, Door> = HashMap::new();
+    let doors: Vec<&str> = line.split('~').collect();
+    for door in doors {
+        let door_parts: Vec<&str> = door.split(',').collect();
+        let string = format!("{:#?}", door_parts.clone());
+        //println!("{}", string);
+        let identifier: char = door_parts[0].chars().next().unwrap();
+        let room_path = door_parts[1];
+        let spawn_x: i32 = door_parts[2].parse().unwrap();
+        let spawn_y: i32 = door_parts[3].parse().unwrap();
+        let new_door = Door::new_door(room_path, spawn_x, spawn_y);
+        door_map.insert(identifier, new_door);
+    }
+    door_map
 }
