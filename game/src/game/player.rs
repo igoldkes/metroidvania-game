@@ -29,6 +29,7 @@ pub enum RoomChange {
 
 pub struct Player {
     pub movement_blocked_buffer: f32,
+    pub damage_blocked_buffer: f32,
     pub current_room: Room,
     pub room_change: RoomChange,
     pub x: f32,
@@ -54,12 +55,14 @@ pub struct Player {
     jackie_paper_up_left_texture: Texture2D,
     jackie_paper_down_right_texture: Texture2D,
     jackie_paper_down_left_texture: Texture2D,
+    pub lives: usize,
 }
 
 impl Player {
     pub fn new(current_room: Room, x: f32, y: f32, jackie_paper_right_texture: Texture2D, jackie_paper_left_texture: Texture2D, jackie_paper_up_right_texture: Texture2D, jackie_paper_up_left_texture: Texture2D, jackie_paper_down_right_texture: Texture2D, jackie_paper_down_left_texture: Texture2D) -> Self {
         Self {
             movement_blocked_buffer: 0.0,
+            damage_blocked_buffer: 0.0,
             current_room,
             room_change: RoomChange::None,
             x,
@@ -85,6 +88,7 @@ impl Player {
             jackie_paper_up_left_texture,
             jackie_paper_down_right_texture,
             jackie_paper_down_left_texture,
+            lives: 5,
         }
     }
 
@@ -97,6 +101,10 @@ impl Player {
         
         if self.movement_blocked_buffer > 0.0 {
             self.movement_blocked_buffer -= dt;
+        }
+
+        if self.damage_blocked_buffer > 0.0 {
+            self.damage_blocked_buffer -= dt;
         }
 
         if !self.paused && self.movement_blocked_buffer <= 0.0 {
@@ -257,7 +265,7 @@ impl Player {
                             self.y - 86.0,
                             WHITE,
                             DrawTextureParams {
-                                dest_size: Some(vec2(90.0, 90.0)),
+                                dest_size: Some(vec2(90.0, 90.0)), // 67.5, 90.0
                                 ..Default::default()
                             },
                         );
@@ -495,6 +503,11 @@ impl Player {
                 self.x = (next_right as f32) * TILE_SIZE - self.pwidth * TILE_SIZE;
                 self.vel_x = 0.0;
                 self.hitting_wall_right = true;
+                if self.current_room.is_spikes(next_right, top_y) || self.current_room.is_spikes(next_right, bottom_y) || self.current_room.is_spikes(next_right, middle_y) && self.damage_blocked_buffer <= 0.0 {
+                    println!("spikes!");
+                    self.lives -= 1;
+                    self.damage_blocked_buffer = 2.0;
+                }
             } else {
                 if self.on_ground {
                     if self.current_room.is_door(next_right - 1, bottom_y) && self.current_room.is_door(next_right - 1, middle_y) {
@@ -531,10 +544,15 @@ impl Player {
         } else if self.vel_x < 0.0 {
             // moving left
             let next_left = (self.x / TILE_SIZE).floor() as i32;
-            if self.current_room.is_solid(next_left, top_y) || self.current_room.is_solid(next_left, bottom_y) || self.current_room.is_solid(next_left, middle_y) {
+            if self.current_room.is_solid(next_left, top_y) || self.current_room.is_solid(next_left, bottom_y) || self.current_room.is_solid(next_left, middle_y) && self.damage_blocked_buffer <= 0.0 {
                 self.x = (next_left as f32 + 1.0) * TILE_SIZE;
                 self.vel_x = 0.0;
                 self.hitting_wall_left = true;
+                if self.current_room.is_spikes(next_left, top_y) || self.current_room.is_spikes(next_left, bottom_y) || self.current_room.is_spikes(next_left, middle_y) {
+                    println!("spikes!");
+                    self.lives -= 1;
+                    self.damage_blocked_buffer = 2.0;
+                }
             } else {
                 if self.on_ground {
                     if self.current_room.is_door(next_left + 1, bottom_y) && self.current_room.is_door(next_left + 1, middle_y) {
@@ -581,6 +599,11 @@ impl Player {
                 self.y = next_bottom as f32 * TILE_SIZE;
                 self.vel_y = 0.0;
                 self.on_ground = true;
+                if self.current_room.is_spikes(left_x, next_bottom) && self.current_room.is_spikes(right_x, next_bottom) && self.damage_blocked_buffer <= 0.0 {
+                    println!("spikes!");
+                    self.lives -= 1;
+                    self.damage_blocked_buffer = 2.0;
+                }
             } else {
                 if self.current_room.is_door(left_x, next_bottom - 1) && self.current_room.is_door(right_x, next_bottom - 1) {
                     println!("heya");
@@ -604,6 +627,11 @@ impl Player {
                 self.y = ((next_top + 1) as f32 + self.pheight) * TILE_SIZE;
                 self.vel_y = 0.0;
                 //self.is_jumping = false;
+                if self.current_room.is_spikes(left_x, next_top) && self.current_room.is_spikes(right_x, next_top) && self.damage_blocked_buffer <= 0.0 {
+                    println!("spikes!");
+                    self.lives -= 1;
+                    self.damage_blocked_buffer = 2.0;
+                }
             } else {
                 if self.current_room.is_door(left_x, next_top + 1) && self.current_room.is_door(right_x, next_top + 1) {
                     println!("bello");

@@ -80,6 +80,7 @@ pub fn draw_startup_overlay(
             for i in 0..2 {
                 let ry = row0_y + i as f32 * row_h;
                 if menu_role == i {
+                    //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x, ry - 15.0 * scale, row_bg_w, row_h);
                     draw_rectangle(
                         x + row_pad_x,
                         ry - 15.0 * scale,

@@ -49,6 +49,7 @@ pub fn draw_pause_menu_overlay( menu_state: PauseMenuState ) {
 
             for i in 0..3 {
                 let ry = row0_y + (1.25 * (i as f32)) * row_h;
+                //println!("highlight box for pause_menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x, ry - 15.0 * scale, row_bg_w, row_h);
                 if pause_menu_role == i {
                     draw_rectangle(
                         x + row_pad_x,

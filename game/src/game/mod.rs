@@ -35,6 +35,7 @@ enum Tile {
     BrownBrick,
     GrayBrick,
     Door { identifier: char },
+    Spikes,
 }
 
 #[derive(Clone, Debug)]
@@ -84,6 +85,7 @@ impl Room {
                 let tile = match c {
                     '#' => Tile::GrayBrick,
                     '$' => Tile::BrownBrick,
+                    '^' => Tile::Spikes,
                     _ if door_map.contains_key(&c) => Tile::Door { identifier: c },
                     _ => Tile::None,
                 };
@@ -116,13 +118,21 @@ impl Room {
             Tile::BrownBrick => true,
             Tile::GrayBrick => true,
             Tile::Door { .. } => false,
+            Tile::Spikes => true,
         }
         //*self.tile_map.get(&(x, y)).unwrap_or(&false)
     }
 
     pub fn is_door(&self, x: i32, y: i32) -> bool {
         match *self.tile_map.get(&(x, y)).unwrap() {
-            Tile::Door { .. }=> true,
+            Tile::Door { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_spikes(&self, x: i32, y: i32) -> bool {
+        match *self.tile_map.get(&(x, y)).unwrap() {
+            Tile::Spikes => true,
             _ => false,
         }
     }
@@ -141,6 +151,8 @@ pub struct GameState {
     pause_menu_role: usize,
     story: StoryPhase,
     paused: bool,
+    player_lives: usize,
+    mouse_moved_buffer: f32,
     // assets
     jackie_paper_right_texture: Texture2D,
     jackie_paper_left_texture: Texture2D,
@@ -148,6 +160,7 @@ pub struct GameState {
     jackie_paper_up_left_texture: Texture2D,
     jackie_paper_down_right_texture: Texture2D,
     jackie_paper_down_left_texture: Texture2D,
+    player_life_texture: Texture2D,
     background_texture: Texture2D,
     show_background: bool,
     menu_click_sound: Sound,
@@ -168,6 +181,7 @@ impl GameState {
         let jackie_paper_up_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_up_left.png");
         let jackie_paper_down_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_down_right.png");
         let jackie_paper_down_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_down_left.png");
+        let player_life_texture =  assets::load_player_life_texture("assets/graphics_assets/player_life.png");
         let background_texture = assets::load_background_texture("assets/graphics_assets/background.png");
 
         let current_room = Room::load_room("assets/rooms/room3.txt");
@@ -195,12 +209,15 @@ impl GameState {
             pause_menu_role: 0,
             story: StoryPhase::new_game(),
             paused: false,
+            player_lives: 5,
+            mouse_moved_buffer: 0.0,
             jackie_paper_right_texture,
             jackie_paper_left_texture,
             jackie_paper_up_right_texture,
             jackie_paper_up_left_texture,
             jackie_paper_down_right_texture,
             jackie_paper_down_left_texture,
+            player_life_texture,
             background_texture,
             show_background: false,
             menu_click_sound,
@@ -212,8 +229,24 @@ impl GameState {
         self.width = screen_width();
         self.height = screen_height();
 
+        if mouse_delta_position() != (0.0, 0.0).into() {
+            self.mouse_moved_buffer = 0.15;
+        }
+
+        if self.mouse_moved_buffer > 0.0 {
+            self.mouse_moved_buffer -= dt;
+        }
+
         if matches!(self.story, StoryPhase::Playing) {
             self.player.update(self.width, self.height, self.floor_y, dt);
+
+            if self.player_lives > self.player.lives {
+                // player just lost a life
+                self.player_lives = self.player.lives;
+            } else if self.player_lives < self.player.lives {
+                // player just gained a life
+                self.player_lives = self.player.lives;
+            }
 
             if is_key_pressed(KeyCode::Escape) {
                 if self.menu_clicks_settings_toggle {
@@ -282,6 +315,10 @@ impl GameState {
 
             self.draw_tiles();
 
+            set_default_camera();
+
+            self.draw_player_lives();
+
             //draw_rectangle(
             //    0.0,
             //    self.floor_y + 16.0,
@@ -300,6 +337,20 @@ impl GameState {
                 }
                 PauseMenuState::None => {}
             }
+
+            if self.mouse_moved_buffer > 0.0 {
+                let mouse_pos = mouse_position();
+                if mouse_pos.0 > 338.0 && mouse_pos.0 < 942.0 {
+                    if mouse_pos.1 > 294.5 && mouse_pos.1 < 342.0 {
+                        self.pause_menu_role = 0;
+                    } else if mouse_pos.1 > 342.0 && mouse_pos.1 < 389.5 {
+                        self.pause_menu_role = 1;
+                    } else if mouse_pos.1 > 389.5 && mouse_pos.1 < 427.5 {
+                        self.pause_menu_role = 2;
+                    }
+                }
+            }
+                
 
             if is_key_pressed(KeyCode::W) | is_key_pressed(KeyCode::Up) {
                 if self.menu_clicks_settings_toggle {
@@ -323,7 +374,7 @@ impl GameState {
                 }
             }
 
-            if is_key_pressed(KeyCode::Enter) {
+            if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
                 if self.menu_clicks_settings_toggle {
                     play_sound_once(&self.menu_click_sound);
                 }
@@ -355,7 +406,7 @@ impl GameState {
     fn handle_startup_input(&mut self) {
         match &self.startup_state {
             StartupState::Splash => {
-                if get_last_key_pressed().is_some() {
+                if get_last_key_pressed().is_some() || is_mouse_button_pressed(MouseButton::Left) || is_mouse_button_pressed(MouseButton::Right) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                     }
@@ -364,6 +415,18 @@ impl GameState {
                 }
             }
             StartupState::MainMenu => {
+                if self.mouse_moved_buffer > 0.0 {
+                    let mouse_pos = mouse_position();
+                    if mouse_pos.0 > 278.0 && mouse_pos.0 < 1002.0 {
+                        if mouse_pos.1 > 327.0 && mouse_pos.1 < 365.0 {
+                            self.startup_menu_role = 0;
+                        } else if mouse_pos.1 > 365.0 && mouse_pos.1 < 403.0 {
+                            self.startup_menu_role = 1;
+                        }
+                    }
+                }
+                
+
                 if is_key_pressed(KeyCode::Up) | is_key_pressed(KeyCode::W) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
@@ -394,7 +457,7 @@ impl GameState {
                     self.startup_state = StartupState::Splash;
                 }
 
-                if is_key_pressed(KeyCode::Enter) {
+                if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                     }
@@ -438,6 +501,15 @@ impl GameState {
                         GRAY,
                     );
                 }
+                Tile::Spikes => {
+                    draw_rectangle(
+                        tile.0.0 as f32 * TILE_SIZE,
+                        tile.0.1 as f32 * TILE_SIZE,
+                        TILE_SIZE,
+                        TILE_SIZE,
+                        RED,
+                    );
+                }
                 Tile::Door { .. } => {
                     //draw_rectangle(
                     //    tile.0.0 as f32 * TILE_SIZE,
@@ -469,6 +541,21 @@ impl GameState {
         self.player.x = door.spawn_x as f32 * TILE_SIZE;
         self.player.y = door.spawn_y as f32 * TILE_SIZE;
         self.player.movement_blocked_buffer = 0.7;
+    }
+
+    fn draw_player_lives(&self) {
+        for i in 0..self.player_lives {
+            draw_texture_ex(
+                &self.player_life_texture,
+                self.width - 70.0 - i as f32 * 50.0,
+                20.0,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(45.0, 45.0)),
+                    ..Default::default()
+                },
+            )
+        }
     }
 }
 
