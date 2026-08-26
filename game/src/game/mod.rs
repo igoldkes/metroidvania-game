@@ -6,6 +6,7 @@ mod assets;
 
 use macroquad::prelude::*;
 use macroquad::audio::{load_sound, play_sound, play_sound_once, stop_sound, set_sound_volume, PlaySoundParams, Sound};
+use macroquad::experimental::animation::{AnimatedSprite, Animation};
 
 use std::collections::HashMap;
 
@@ -160,6 +161,8 @@ pub struct GameState {
     jackie_paper_up_left_texture: Texture2D,
     jackie_paper_down_right_texture: Texture2D,
     jackie_paper_down_left_texture: Texture2D,
+    jackie_paper_walking_texture: Texture2D,
+    jackie_paper_walking_animation: AnimatedSprite,
     player_life_texture: Texture2D,
     background_texture: Texture2D,
     show_background: bool,
@@ -184,9 +187,58 @@ impl GameState {
         let player_life_texture =  assets::load_player_life_texture("assets/graphics_assets/player_life.png");
         let background_texture = assets::load_background_texture("assets/graphics_assets/background.png");
 
+        let jackie_paper_walking_texture = assets::load_jackie_paper_texture("assets/graphics_assets/sprite_sheet_walking.png");
+        jackie_paper_walking_texture.set_filter(FilterMode::Linear);
+
+        build_textures_atlas();
+
+        let mut jackie_paper_walking_animation = AnimatedSprite::new(
+            1179,
+            1577,
+            &[
+                Animation {
+                    name: "walking_left".to_string(),
+                    row: 0,
+                    frames: 2,
+                    fps: 4,
+                },
+                Animation {
+                    name: "walking_right".to_string(),
+                    row: 1,
+                    frames: 2,
+                    fps: 4,
+                },
+                Animation {
+                    name: "jumping_left".to_string(),
+                    row: 2,
+                    frames: 1,
+                    fps: 1,
+                },
+                Animation {
+                    name: "jumping_right".to_string(),
+                    row: 3,
+                    frames: 1,
+                    fps: 1,
+                },
+                Animation {
+                    name: "falling_left".to_string(),
+                    row: 4,
+                    frames: 1,
+                    fps: 1,
+                },
+                Animation {
+                    name: "falling_right".to_string(),
+                    row: 5,
+                    frames: 1,
+                    fps: 1,
+                },
+            ],
+            true,
+        );
+
         let current_room = Room::load_room("assets/rooms/room3.txt");
 
-        let player = Player::new(current_room.clone(), width / 2.0, height / 2.0, jackie_paper_right_texture.clone(), jackie_paper_left_texture.clone(), jackie_paper_up_right_texture.clone(), jackie_paper_up_left_texture.clone(), jackie_paper_down_right_texture.clone(), jackie_paper_down_left_texture.clone());
+        let player = Player::new(current_room.clone(), width / 2.0, height / 2.0, jackie_paper_right_texture.clone(), jackie_paper_left_texture.clone(), jackie_paper_up_right_texture.clone(), jackie_paper_up_left_texture.clone(), jackie_paper_down_right_texture.clone(), jackie_paper_down_left_texture.clone(), jackie_paper_walking_texture.clone(), jackie_paper_walking_animation.clone());
 
         let cam = Camera2D {
             target: vec2(width / 2.0, height / 2.0),
@@ -217,6 +269,8 @@ impl GameState {
             jackie_paper_up_left_texture,
             jackie_paper_down_right_texture,
             jackie_paper_down_left_texture,
+            jackie_paper_walking_texture,
+            jackie_paper_walking_animation,
             player_life_texture,
             background_texture,
             show_background: false,
@@ -311,7 +365,7 @@ impl GameState {
                 );
             }
 
-            self.player.draw();
+            self.player.draw2();
 
             self.draw_tiles();
 

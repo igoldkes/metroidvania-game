@@ -5,7 +5,7 @@ door1_id,door1_room_filepath,new_room_spawn_x_coordinate,new_room_spawn_y_coordi
 #  $$$             # // '#' = solid gray tile
 #            $     # // '$' = solid brown tile
 D    $$            # // 'D' = example door tile
-D                  #
+D                  # // '^' = spikes tile
 ####################
 
 

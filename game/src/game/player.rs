@@ -1,4 +1,5 @@
 use macroquad::prelude::*;
+use macroquad::experimental::animation::{AnimatedSprite, Animation};
 
 use super::{Room, Tile, Door};
 
@@ -55,11 +56,13 @@ pub struct Player {
     jackie_paper_up_left_texture: Texture2D,
     jackie_paper_down_right_texture: Texture2D,
     jackie_paper_down_left_texture: Texture2D,
+    jackie_paper_walking_texture: Texture2D,
+    jackie_paper_walking_animation: AnimatedSprite,
     pub lives: usize,
 }
 
 impl Player {
-    pub fn new(current_room: Room, x: f32, y: f32, jackie_paper_right_texture: Texture2D, jackie_paper_left_texture: Texture2D, jackie_paper_up_right_texture: Texture2D, jackie_paper_up_left_texture: Texture2D, jackie_paper_down_right_texture: Texture2D, jackie_paper_down_left_texture: Texture2D) -> Self {
+    pub fn new(current_room: Room, x: f32, y: f32, jackie_paper_right_texture: Texture2D, jackie_paper_left_texture: Texture2D, jackie_paper_up_right_texture: Texture2D, jackie_paper_up_left_texture: Texture2D, jackie_paper_down_right_texture: Texture2D, jackie_paper_down_left_texture: Texture2D, jackie_paper_walking_texture: Texture2D, jackie_paper_walking_animation: AnimatedSprite) -> Self {
         Self {
             movement_blocked_buffer: 0.0,
             damage_blocked_buffer: 0.0,
@@ -88,6 +91,8 @@ impl Player {
             jackie_paper_up_left_texture,
             jackie_paper_down_right_texture,
             jackie_paper_down_left_texture,
+            jackie_paper_walking_texture,
+            jackie_paper_walking_animation,
             lives: 5,
         }
     }
@@ -356,6 +361,74 @@ impl Player {
         }
     }
 
+    pub fn draw2(&mut self) {
+        draw_rectangle(
+            self.x,
+            self.y - self.pheight as f32 * TILE_SIZE,
+            self.pwidth as f32 * TILE_SIZE,
+            self.pheight as f32 * TILE_SIZE,
+            Color::from_rgba(255, 0, 0, 80),
+        );
+
+        // check movement
+        let walking = self.vel_x != 0.0;
+        match self.x_direction {
+            XDirection::Left => {
+                if walking {
+                    // moving left
+                    if self.on_ground {
+                        self.jackie_paper_walking_animation.set_animation(0);
+                        self.jackie_paper_walking_animation.update();
+                    } else if self.vel_y < 0.0 {
+                        // moving up
+                        self.jackie_paper_walking_animation.set_animation(2);
+                        self.jackie_paper_walking_animation.update();
+                    } else if self.vel_y > 0.0 {
+                        // moving down
+                        self.jackie_paper_walking_animation.set_animation(4);
+                        self.jackie_paper_walking_animation.update();
+                    }
+                } else {
+                    // standing still facing left
+
+                }
+            }
+            XDirection::Right => {
+                if walking {
+                    // moving right
+                    if self.on_ground {
+                        self.jackie_paper_walking_animation.set_animation(1);
+                        self.jackie_paper_walking_animation.update();
+                    } else if self.vel_y < 0.0 {
+                        // moving up
+                        self.jackie_paper_walking_animation.set_animation(3);
+                        self.jackie_paper_walking_animation.update();
+                    } else if self.vel_y > 0.0 {
+                        // moving down
+                        self.jackie_paper_walking_animation.set_animation(5);
+                        self.jackie_paper_walking_animation.update();
+                    }
+                } else {
+                    // standing still facing right
+
+                }
+            }
+        }
+
+        let walking_frame = self.jackie_paper_walking_animation.frame();
+        draw_texture_ex(
+            &self.jackie_paper_walking_texture,
+            self.x - 26.0,
+            self.y - 86.0,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(90.0, 90.0)),
+                source: Some(walking_frame.source_rect),
+                ..Default::default()
+            },
+        );
+    }
+
     pub fn draw1(&self) {
         match self.x_direction {
             XDirection::Right => {
@@ -498,6 +571,7 @@ impl Player {
 
         if self.vel_x > 0.0 {
             // moving right
+            
             let next_right = ((self.x + self.pwidth * TILE_SIZE) / TILE_SIZE).floor() as i32;
             if self.current_room.is_solid(next_right, top_y) || self.current_room.is_solid(next_right, bottom_y) || self.current_room.is_solid(next_right, middle_y) {
                 self.x = (next_right as f32) * TILE_SIZE - self.pwidth * TILE_SIZE;
@@ -543,6 +617,7 @@ impl Player {
             }
         } else if self.vel_x < 0.0 {
             // moving left
+
             let next_left = (self.x / TILE_SIZE).floor() as i32;
             if self.current_room.is_solid(next_left, top_y) || self.current_room.is_solid(next_left, bottom_y) || self.current_room.is_solid(next_left, middle_y) && self.damage_blocked_buffer <= 0.0 {
                 self.x = (next_left as f32 + 1.0) * TILE_SIZE;
