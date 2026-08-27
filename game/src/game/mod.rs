@@ -155,12 +155,12 @@ pub struct GameState {
     player_lives: usize,
     mouse_moved_buffer: f32,
     // assets
-    jackie_paper_right_texture: Texture2D,
-    jackie_paper_left_texture: Texture2D,
-    jackie_paper_up_right_texture: Texture2D,
-    jackie_paper_up_left_texture: Texture2D,
-    jackie_paper_down_right_texture: Texture2D,
-    jackie_paper_down_left_texture: Texture2D,
+    //jackie_paper_right_texture: Texture2D,
+    //jackie_paper_left_texture: Texture2D,
+    //jackie_paper_up_right_texture: Texture2D,
+    //jackie_paper_up_left_texture: Texture2D,
+    //jackie_paper_down_right_texture: Texture2D,
+    //jackie_paper_down_left_texture: Texture2D,
     jackie_paper_walking_texture: Texture2D,
     jackie_paper_walking_animation: AnimatedSprite,
     player_life_texture: Texture2D,
@@ -178,12 +178,12 @@ impl GameState {
         let height = screen_height();
         let floor_y = height - 48.0;
 
-        let jackie_paper_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_right.png");
-        let jackie_paper_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_left.png");
-        let jackie_paper_up_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_up_right.png");
-        let jackie_paper_up_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_up_left.png");
-        let jackie_paper_down_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_down_right.png");
-        let jackie_paper_down_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_down_left.png");
+        //let jackie_paper_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_right.png");
+        //let jackie_paper_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_left.png");
+        //let jackie_paper_up_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_up_right.png");
+        //let jackie_paper_up_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_up_left.png");
+        //let jackie_paper_down_right_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_down_right.png");
+        //let jackie_paper_down_left_texture = assets::load_jackie_paper_texture("assets/graphics_assets/jackie_paper_down_left.png");
         let player_life_texture =  assets::load_player_life_texture("assets/graphics_assets/player_life.png");
         let background_texture = assets::load_background_texture("assets/graphics_assets/background.png");
 
@@ -193,8 +193,8 @@ impl GameState {
         build_textures_atlas();
 
         let mut jackie_paper_walking_animation = AnimatedSprite::new(
-            1179,
-            1577,
+            96,
+            128,
             &[
                 Animation {
                     name: "walking_left".to_string(),
@@ -238,7 +238,7 @@ impl GameState {
 
         let current_room = Room::load_room("assets/rooms/room3.txt");
 
-        let player = Player::new(current_room.clone(), width / 2.0, height / 2.0, jackie_paper_right_texture.clone(), jackie_paper_left_texture.clone(), jackie_paper_up_right_texture.clone(), jackie_paper_up_left_texture.clone(), jackie_paper_down_right_texture.clone(), jackie_paper_down_left_texture.clone(), jackie_paper_walking_texture.clone(), jackie_paper_walking_animation.clone());
+        let player = Player::new(current_room.clone(), width / 2.0, height / 2.0, jackie_paper_walking_texture.clone(), jackie_paper_walking_animation.clone());
 
         let cam = Camera2D {
             target: vec2(width / 2.0, height / 2.0),
@@ -263,12 +263,12 @@ impl GameState {
             paused: false,
             player_lives: 5,
             mouse_moved_buffer: 0.0,
-            jackie_paper_right_texture,
-            jackie_paper_left_texture,
-            jackie_paper_up_right_texture,
-            jackie_paper_up_left_texture,
-            jackie_paper_down_right_texture,
-            jackie_paper_down_left_texture,
+            //jackie_paper_right_texture,
+            //jackie_paper_left_texture,
+            //jackie_paper_up_right_texture,
+            //jackie_paper_up_left_texture,
+            //jackie_paper_down_right_texture,
+            //jackie_paper_down_left_texture,
             jackie_paper_walking_texture,
             jackie_paper_walking_animation,
             player_life_texture,
@@ -293,6 +293,8 @@ impl GameState {
 
         if matches!(self.story, StoryPhase::Playing) {
             self.player.update(self.width, self.height, self.floor_y, dt);
+
+
 
             if self.player_lives > self.player.lives {
                 // player just lost a life
@@ -365,7 +367,7 @@ impl GameState {
                 );
             }
 
-            self.player.draw2();
+            self.player.draw();
 
             self.draw_tiles();
 

@@ -50,19 +50,19 @@ pub struct Player {
     pub y_direction: YDirection,
     pub attack_direction: AttackDirection,
     pub attack_buffer_time: f32,
-    jackie_paper_right_texture: Texture2D,
-    jackie_paper_left_texture: Texture2D,
-    jackie_paper_up_right_texture: Texture2D,
-    jackie_paper_up_left_texture: Texture2D,
-    jackie_paper_down_right_texture: Texture2D,
-    jackie_paper_down_left_texture: Texture2D,
+    //jackie_paper_right_texture: Texture2D,
+    //jackie_paper_left_texture: Texture2D,
+    //jackie_paper_up_right_texture: Texture2D,
+    //jackie_paper_up_left_texture: Texture2D,
+    //jackie_paper_down_right_texture: Texture2D,
+    //jackie_paper_down_left_texture: Texture2D,
     jackie_paper_walking_texture: Texture2D,
     jackie_paper_walking_animation: AnimatedSprite,
     pub lives: usize,
 }
 
 impl Player {
-    pub fn new(current_room: Room, x: f32, y: f32, jackie_paper_right_texture: Texture2D, jackie_paper_left_texture: Texture2D, jackie_paper_up_right_texture: Texture2D, jackie_paper_up_left_texture: Texture2D, jackie_paper_down_right_texture: Texture2D, jackie_paper_down_left_texture: Texture2D, jackie_paper_walking_texture: Texture2D, jackie_paper_walking_animation: AnimatedSprite) -> Self {
+    pub fn new(current_room: Room, x: f32, y: f32, jackie_paper_walking_texture: Texture2D, jackie_paper_walking_animation: AnimatedSprite) -> Self {
         Self {
             movement_blocked_buffer: 0.0,
             damage_blocked_buffer: 0.0,
@@ -85,12 +85,12 @@ impl Player {
             y_direction: YDirection::None,
             attack_direction: AttackDirection::Right,
             attack_buffer_time: 0.0,
-            jackie_paper_right_texture,
-            jackie_paper_left_texture,
-            jackie_paper_up_right_texture,
-            jackie_paper_up_left_texture,
-            jackie_paper_down_right_texture,
-            jackie_paper_down_left_texture,
+            //jackie_paper_right_texture,
+            //jackie_paper_left_texture,
+            //jackie_paper_up_right_texture,
+            //jackie_paper_up_left_texture,
+            //jackie_paper_down_right_texture,
+            //jackie_paper_down_left_texture,
             jackie_paper_walking_texture,
             jackie_paper_walking_animation,
             lives: 5,
@@ -208,6 +208,51 @@ impl Player {
         // resolve horizontal collisions
         self.resolve_horizontal_collisions();
 
+        // update and set animations
+        let walking = self.vel_x != 0.0;
+        match self.x_direction {
+            XDirection::Left => {
+                if walking {
+                    // moving left
+                    if self.on_ground {
+                        self.jackie_paper_walking_animation.set_animation(0);
+                        self.jackie_paper_walking_animation.update();
+                    } else if self.vel_y < 0.0 {
+                        // moving up
+                        self.jackie_paper_walking_animation.set_animation(2);
+                        self.jackie_paper_walking_animation.update();
+                    } else if self.vel_y > 0.0 {
+                        // moving down
+                        self.jackie_paper_walking_animation.set_animation(4);
+                        self.jackie_paper_walking_animation.update();
+                    }
+                } else {
+                    // standing still facing left
+
+                }
+            }
+            XDirection::Right => {
+                if walking {
+                    // moving right
+                    if self.on_ground {
+                        self.jackie_paper_walking_animation.set_animation(1);
+                        self.jackie_paper_walking_animation.update();
+                    } else if self.vel_y < 0.0 {
+                        // moving up
+                        self.jackie_paper_walking_animation.set_animation(3);
+                        self.jackie_paper_walking_animation.update();
+                    } else if self.vel_y > 0.0 {
+                        // moving down
+                        self.jackie_paper_walking_animation.set_animation(5);
+                        self.jackie_paper_walking_animation.update();
+                    }
+                } else {
+                    // standing still facing right
+
+                }
+            }
+        }
+
         //self.on_ground = false;
         //self.hitting_wall_right = false;
         //self.hitting_wall_left = false;
@@ -227,7 +272,7 @@ impl Player {
         //self.y = clamp(self.y, 16.0, height - 16.0);
     }
 
-    pub fn draw(&self) {
+/*    pub fn draw2(&self) {
         draw_rectangle(
             self.x,
             self.y - self.pheight as f32 * TILE_SIZE,
@@ -359,9 +404,9 @@ impl Player {
                 }
             }
         }
-    }
+    }*/
 
-    pub fn draw2(&mut self) {
+    pub fn draw(&mut self) {
         draw_rectangle(
             self.x,
             self.y - self.pheight as f32 * TILE_SIZE,
@@ -371,49 +416,7 @@ impl Player {
         );
 
         // check movement
-        let walking = self.vel_x != 0.0;
-        match self.x_direction {
-            XDirection::Left => {
-                if walking {
-                    // moving left
-                    if self.on_ground {
-                        self.jackie_paper_walking_animation.set_animation(0);
-                        self.jackie_paper_walking_animation.update();
-                    } else if self.vel_y < 0.0 {
-                        // moving up
-                        self.jackie_paper_walking_animation.set_animation(2);
-                        self.jackie_paper_walking_animation.update();
-                    } else if self.vel_y > 0.0 {
-                        // moving down
-                        self.jackie_paper_walking_animation.set_animation(4);
-                        self.jackie_paper_walking_animation.update();
-                    }
-                } else {
-                    // standing still facing left
-
-                }
-            }
-            XDirection::Right => {
-                if walking {
-                    // moving right
-                    if self.on_ground {
-                        self.jackie_paper_walking_animation.set_animation(1);
-                        self.jackie_paper_walking_animation.update();
-                    } else if self.vel_y < 0.0 {
-                        // moving up
-                        self.jackie_paper_walking_animation.set_animation(3);
-                        self.jackie_paper_walking_animation.update();
-                    } else if self.vel_y > 0.0 {
-                        // moving down
-                        self.jackie_paper_walking_animation.set_animation(5);
-                        self.jackie_paper_walking_animation.update();
-                    }
-                } else {
-                    // standing still facing right
-
-                }
-            }
-        }
+        
 
         let walking_frame = self.jackie_paper_walking_animation.frame();
         draw_texture_ex(
@@ -427,9 +430,51 @@ impl Player {
                 ..Default::default()
             },
         );
+
+        if self.is_attacking {
+            match self.attack_direction {
+                AttackDirection::Right => {
+                    draw_rectangle(
+                        self.x + self.pwidth * TILE_SIZE,
+                        self.y - self.pheight / 2.0 * TILE_SIZE - 6.0,
+                        40.0,
+                        12.0,
+                        Color::from_rgba(0, 255, 0, 80),
+                    );
+                }
+                AttackDirection::Left => {
+                    draw_rectangle(
+                        self.x - 40.0,
+                        self.y - self.pheight / 2.0 * TILE_SIZE - 6.0,
+                        40.0,
+                        12.0,
+                        Color::from_rgba(0, 255, 0, 80),
+                    );
+                }
+                AttackDirection::Up => {
+                    draw_rectangle(
+                        self.x + self.pwidth / 2.0 * TILE_SIZE - 6.0,
+                        self.y - self.pheight * TILE_SIZE - 40.0,
+                        12.0,
+                        40.0,
+                        Color::from_rgba(0, 255, 0, 80),
+                    );
+                }
+                AttackDirection::Down => {
+                    draw_rectangle(
+                        self.x + self.pwidth / 2.0 * TILE_SIZE - 6.0,
+                        self.y,
+                        12.0,
+                        40.0,
+                        Color::from_rgba(0, 255, 0, 80),
+                    );
+                }
+            }
+        }
+
     }
 
-    pub fn draw1(&self) {
+/*    pub fn draw1(&self) {
         match self.x_direction {
             XDirection::Right => {
                 match self.y_direction {
@@ -562,7 +607,7 @@ impl Player {
                 }
             }
         }
-    }
+    }*/
 
     fn resolve_horizontal_collisions(&mut self) {
         let top_y = ((self.y - self.pheight * TILE_SIZE) / TILE_SIZE).floor() as i32;
