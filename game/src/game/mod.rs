@@ -618,17 +618,19 @@ impl GameState {
 fn door_parser(line: &str) -> HashMap<char, Door> {
     //todo!("parse a line from a room file: split on tabs to separate doors, split on commas to separate each door into 1) identifier 2) file path for connected room 3) x coordinate in tiles for the player's spawnpoint in the new room 4) y coordinate in tiles for the player's spawnpoint in the new room")
     let mut door_map: HashMap<char, Door> = HashMap::new();
-    let doors: Vec<&str> = line.split('~').collect();
-    for door in doors {
-        let door_parts: Vec<&str> = door.split(',').collect();
-        let string = format!("{:#?}", door_parts.clone());
-        //println!("{}", string);
-        let identifier: char = door_parts[0].chars().next().unwrap();
-        let room_path = door_parts[1];
-        let spawn_x: i32 = door_parts[2].parse().unwrap();
-        let spawn_y: i32 = door_parts[3].parse().unwrap();
-        let new_door = Door::new_door(room_path, spawn_x, spawn_y);
-        door_map.insert(identifier, new_door);
+    if !line.is_empty() {
+        let doors: Vec<&str> = line.split('~').collect();
+        for door in doors {
+            let door_parts: Vec<&str> = door.split(',').collect();
+            let string = format!("{:#?}", door_parts.clone());
+            //println!("{}", string);
+            let identifier: char = door_parts[0].chars().next().unwrap();
+            let room_path = door_parts[1];
+            let spawn_x: i32 = door_parts[2].parse().unwrap();
+            let spawn_y: i32 = door_parts[3].parse().unwrap();
+            let new_door = Door::new_door(room_path, spawn_x, spawn_y);
+            door_map.insert(identifier, new_door);
+        }
     }
     door_map
 }

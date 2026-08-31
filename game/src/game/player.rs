@@ -98,12 +98,12 @@ impl Player {
     }
 
     pub fn update(&mut self, width: f32, height: f32, floor_y: f32, dt: f32) {
-        const GRAVITY_UP: f32 = 800.0;
+        const GRAVITY_UP: f32 = 1050.0;
         const GRAVITY_DOWN: f32 = 1500.0;
         const JUMP_FORCE: f32 = -650.0;
         const JUMP_CUT: f32 = 0.1;
         const MOVE_SPEED: f32 = 300.0;
-        
+
         if self.movement_blocked_buffer > 0.0 {
             self.movement_blocked_buffer -= dt;
         }
