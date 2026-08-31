@@ -406,7 +406,58 @@ impl Player {
         }
     }*/
 
-    pub fn draw(&mut self) {
+    pub fn draw(&self) {
+        draw_rectangle(
+            self.x,
+            self.y - self.pheight as f32 * TILE_SIZE,
+            self.pwidth as f32 * TILE_SIZE,
+            self.pheight as f32 * TILE_SIZE,
+            Color::from_rgba(255, 0, 0, 80),
+        );
+        
+        if self.is_attacking {
+            match self.attack_direction {
+                AttackDirection::Right => {
+                    draw_rectangle(
+                        self.x + self.pwidth * TILE_SIZE,
+                        self.y - self.pheight / 2.0 * TILE_SIZE - 6.0,
+                        40.0,
+                        12.0,
+                        Color::from_rgba(0, 255, 0, 80),
+                    );
+                }
+                AttackDirection::Left => {
+                    draw_rectangle(
+                        self.x - 40.0,
+                        self.y - self.pheight / 2.0 * TILE_SIZE - 6.0,
+                        40.0,
+                        12.0,
+                        Color::from_rgba(0, 255, 0, 80),
+                    );
+                }
+                AttackDirection::Up => {
+                    draw_rectangle(
+                        self.x + self.pwidth / 2.0 * TILE_SIZE - 6.0,
+                        self.y - self.pheight * TILE_SIZE - 40.0,
+                        12.0,
+                        40.0,
+                        Color::from_rgba(0, 255, 0, 80),
+                    );
+                }
+                AttackDirection::Down => {
+                    draw_rectangle(
+                        self.x + self.pwidth / 2.0 * TILE_SIZE - 6.0,
+                        self.y,
+                        12.0,
+                        40.0,
+                        Color::from_rgba(0, 255, 0, 80),
+                    );
+                }
+            }
+        }
+    }
+
+    pub fn draw1(&mut self) {
         draw_rectangle(
             self.x,
             self.y - self.pheight as f32 * TILE_SIZE,
@@ -611,7 +662,7 @@ impl Player {
 
     fn resolve_horizontal_collisions(&mut self) {
         let top_y = ((self.y - self.pheight * TILE_SIZE) / TILE_SIZE).floor() as i32;
-        let bottom_y = (self.y / TILE_SIZE - 1.0).floor() as i32;
+        let bottom_y = ((self.y - 1.0) / TILE_SIZE).floor() as i32;
         let middle_y = ((self.y - self.pheight / 2.0 * TILE_SIZE) / TILE_SIZE).floor() as i32;
 
         if self.vel_x > 0.0 {
@@ -720,13 +771,13 @@ impl Player {
                 self.vel_y = 0.0;
                 self.on_ground = true;
                 if self.current_room.is_spikes(left_x, next_bottom) && self.current_room.is_spikes(right_x, next_bottom) && self.damage_blocked_buffer <= 0.0 {
-                    println!("spikes!");
+                    //println!("spikes!");
                     self.lives -= 1;
                     self.damage_blocked_buffer = 2.0;
                 }
             } else {
                 if self.current_room.is_door(left_x, next_bottom - 1) && self.current_room.is_door(right_x, next_bottom - 1) {
-                    println!("heya");
+                    //println!("heya");
                     //std::process::exit(0);
                     //todo!("load new room");
                     let identifier = match self.current_room.tile_map.get(&(left_x, next_bottom - 1)).unwrap() {
@@ -742,7 +793,7 @@ impl Player {
             }
         } else if self.vel_y < 0.0 {
             // moving up (jumping)
-            let next_top = ((self.y - self.pheight * TILE_SIZE) / TILE_SIZE - 0.5).floor() as i32;
+            let next_top = ((self.y - self.pheight * TILE_SIZE) / TILE_SIZE).floor() as i32;
             if self.current_room.is_solid(left_x, next_top) || self.current_room.is_solid(right_x, next_top) {
                 self.y = ((next_top + 1) as f32 + self.pheight) * TILE_SIZE;
                 self.vel_y = 0.0;
