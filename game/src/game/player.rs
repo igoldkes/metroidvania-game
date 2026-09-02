@@ -5,24 +5,28 @@ use super::{Room, Tile, Door};
 
 const TILE_SIZE: f32 = 32.0;
 
-enum XDirection {
+#[derive(Clone, Debug)]
+pub enum XDirection {
     Right,
     Left,
 }
 
-enum YDirection {
+#[derive(Clone, Debug)]
+pub enum YDirection {
     None,
     Up,
     Down,
 }
 
-enum AttackDirection {
+#[derive(Clone, Debug)]
+pub enum AttackDirection {
     Right,
     Left,
     Up,
     Down,
 }
 
+#[derive(Clone, Debug)]
 pub enum RoomChange {
     None,
     Change { door: Door },
@@ -669,19 +673,21 @@ impl Player {
             // moving right
             
             let next_right = ((self.x + self.pwidth * TILE_SIZE) / TILE_SIZE).floor() as i32;
-            if self.current_room.is_solid(next_right, top_y) || self.current_room.is_solid(next_right, bottom_y) || self.current_room.is_solid(next_right, middle_y) {
+            if self.current_room.is_solid(next_right, top_y) || self.current_room.is_solid(next_right, bottom_y) /*|| self.current_room.is_solid(next_right, middle_y)*/ {
                 self.x = (next_right as f32) * TILE_SIZE - self.pwidth * TILE_SIZE;
                 self.vel_x = 0.0;
                 self.hitting_wall_right = true;
-                if self.current_room.is_spikes(next_right, top_y) || self.current_room.is_spikes(next_right, bottom_y) || self.current_room.is_spikes(next_right, middle_y) && self.damage_blocked_buffer <= 0.0 {
-                    println!("spikes!");
-                    self.lives -= 1;
-                    self.damage_blocked_buffer = 2.0;
+                if self.damage_blocked_buffer <= 0.0 {
+                    if self.current_room.is_spikes(next_right, top_y) || self.current_room.is_spikes(next_right, bottom_y) /*|| self.current_room.is_spikes(next_right, middle_y)*/ {
+                        println!("spikes!");
+                        self.lives -= 1;
+                        self.damage_blocked_buffer = 2.0;
+                    }
                 }
             } else {
                 if self.on_ground {
                     if self.current_room.is_door(next_right - 1, bottom_y) && self.current_room.is_door(next_right - 1, middle_y) {
-                        println!("hi");
+                        //println!("hi");
                         //std::process::exit(0);
                         //todo!("load new room");
                         let identifier = match self.current_room.tile_map.get(&(next_right - 1, bottom_y)).unwrap() {
@@ -715,14 +721,16 @@ impl Player {
             // moving left
 
             let next_left = (self.x / TILE_SIZE).floor() as i32;
-            if self.current_room.is_solid(next_left, top_y) || self.current_room.is_solid(next_left, bottom_y) || self.current_room.is_solid(next_left, middle_y) && self.damage_blocked_buffer <= 0.0 {
+            if self.current_room.is_solid(next_left, top_y) || self.current_room.is_solid(next_left, bottom_y) || self.current_room.is_solid(next_left, middle_y) {
                 self.x = (next_left as f32 + 1.0) * TILE_SIZE;
                 self.vel_x = 0.0;
                 self.hitting_wall_left = true;
-                if self.current_room.is_spikes(next_left, top_y) || self.current_room.is_spikes(next_left, bottom_y) || self.current_room.is_spikes(next_left, middle_y) {
-                    println!("spikes!");
-                    self.lives -= 1;
-                    self.damage_blocked_buffer = 2.0;
+                if self.damage_blocked_buffer <=0.0 {
+                    if self.current_room.is_spikes(next_left, top_y) || self.current_room.is_spikes(next_left, bottom_y) || self.current_room.is_spikes(next_left, middle_y) {
+                        println!("spikes!");
+                        self.lives -= 1;
+                        self.damage_blocked_buffer = 2.0;
+                    }
                 }
             } else {
                 if self.on_ground {

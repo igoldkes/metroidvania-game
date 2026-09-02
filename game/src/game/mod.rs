@@ -1,4 +1,5 @@
 mod player;
+mod enemy;
 mod screens;
 mod ui;
 mod story;
@@ -11,6 +12,7 @@ use macroquad::experimental::animation::{AnimatedSprite, Animation};
 use std::collections::HashMap;
 
 use player::{Player, RoomChange};
+use enemy::{Enemy, EnemyType};
 use screens::startup_ui::draw_startup_overlay;
 use screens::overlays_ui::draw_pause_menu_overlay;
 use story::StoryPhase;
@@ -63,6 +65,7 @@ pub struct Room {
     width: i32,
     height: i32,
     door_map: HashMap<char, Door>,
+    enemies: Vec<Enemy>,
 }
 
 impl Room {
@@ -79,6 +82,7 @@ impl Room {
         //println!("{}", string);
         let width: i32 = line1_parts[0].parse().unwrap();
         let height: i32 = line1_parts[1].parse().unwrap();
+
         let line2 = lines.next().unwrap();
         let door_map: HashMap<char, Door> = door_parser(line2);
         for line in lines {
@@ -100,10 +104,29 @@ impl Room {
         let height1 = y;
         let width1 = tiles.len() as i32 / height1;
 
+        let mut enemies: Vec<Enemy> = Vec::new();
+        if line1_parts.len() > 2 {
+            // room has enemies
+            let enemy_line = line1_parts[2];
+            let enemy_line_parts: Vec<&str> = enemy_line.split('~').collect();
+            for enemy in enemy_line_parts {
+                let enemy_data: Vec<&str> = enemy.split('/').collect();
+                let enemy_type = match enemy_data[0] {
+                    "test" => EnemyType::TestEnemy,
+                    &_ => todo!(),
+                };
+                let enemy_x: f32 = enemy_data[1].parse().unwrap();
+                let enemy_y: f32 = enemy_data[2].parse().unwrap();
+                let new_enemy = Enemy::new(enemy_type, enemy_x * TILE_SIZE, enemy_y * TILE_SIZE);
+                //println!("new enemy");
+                enemies.push(new_enemy);
+            }
+        }
+
         //println!("width: {}, height: {}", width, height);
         //println!("width1: {}, height1: {}", width1, height1);
 
-        Self { tiles, tile_map, width, height, door_map }
+        Self { tiles, tile_map, width, height, door_map, enemies }
     }
 
     pub fn is_solid(&self, x: i32, y: i32) -> bool {
@@ -294,7 +317,11 @@ impl GameState {
         if matches!(self.story, StoryPhase::Playing) {
             self.player.update(self.width, self.height, self.floor_y, dt);
 
-
+            if self.current_room.enemies.len() > 0 {
+                for  enemy in &mut self.current_room.enemies {
+                    enemy.update(dt, self.current_room.tile_map.clone(), self.current_room.width, self.current_room.height);
+                }
+            }
 
             if self.player_lives > self.player.lives {
                 // player just lost a life
@@ -368,6 +395,14 @@ impl GameState {
             }
 
             self.player.draw();
+
+            // loop through enemies in the room and draw them
+            //println!("{}", format!("{:?}", self.current_room.enemies));
+            //println!("hello");
+            for enemy in &self.current_room.enemies {
+                //println!("hi");
+                enemy.draw();
+            }
 
             self.draw_tiles();
 
