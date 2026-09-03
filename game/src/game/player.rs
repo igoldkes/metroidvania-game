@@ -749,7 +749,7 @@ impl Player {
                     }
                 } else {
                     if self.current_room.is_door(next_left + 1, bottom_y) && self.current_room.is_door(next_left + 1, middle_y) && self.current_room.is_door(next_left + 1, top_y) {
-                        println!("hello");
+                        //println!("hello");
                         //std::process::exit(0);
                         //todo!("load new room");
                         let identifier = match self.current_room.tile_map.get(&(next_left + 1, bottom_y)).unwrap() {

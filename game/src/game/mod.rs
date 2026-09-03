@@ -318,9 +318,18 @@ impl GameState {
             self.player.update(self.width, self.height, self.floor_y, dt);
 
             if self.current_room.enemies.len() > 0 {
-                for  enemy in &mut self.current_room.enemies {
+                let mut enemies = std::mem::take(&mut self.current_room.enemies);
+
+                for enemy in &mut enemies {
                     enemy.update(dt, self.current_room.tile_map.clone(), self.current_room.width, self.current_room.height);
+                    if self.resolve_enemy_collisions(enemy.clone()) && self.player.damage_blocked_buffer <= 0.0 {
+                        // player overlapping with enemy, takes damage
+                        self.player.lives -= 1;
+                        self.player.damage_blocked_buffer = 2.0;
+                    }
                 }
+
+                self.current_room.enemies = enemies;
             }
 
             if self.player_lives > self.player.lives {
@@ -646,6 +655,44 @@ impl GameState {
                     ..Default::default()
                 },
             )
+        }
+    }
+
+    fn resolve_enemy_collisions(&self, enemy: Enemy) -> bool {
+        let x_distance = (self.player.x - enemy.x).abs();
+        let y_distance = (self.player.y - enemy.y).abs();
+
+        let x_threshold = if self.player.x <= enemy.x {
+            // use player width
+            self.player.pwidth * TILE_SIZE
+        } else {
+            // if self.player.x > enemy.x
+            // use enemy width
+            enemy.ewidth * TILE_SIZE
+        };
+
+        let y_threshold = if self.player.y <= enemy.y {
+            // use enemy height
+            enemy.eheight * TILE_SIZE
+        } else {
+            // if self.player.y > enemy.y
+            // use player height
+            self.player.pheight * TILE_SIZE
+        };
+
+        // check whether the player hitbox is overlapping with enemy hitbox on the x-axis
+        if x_distance >= x_threshold {
+            // no collision on x-axis
+            return false;
+        } else {
+            // collision on x-axis, check y-axis
+            if y_distance >= y_threshold {
+                // no collisions on y-axis, player takes no damage
+                return false;
+            } else {
+                // collision on y-axis, player takes damage
+                return true;
+            }
         }
     }
 }

@@ -31,6 +31,7 @@ pub struct Enemy {
     pub x_direction: XDirection,
     pub y_direction: YDirection,
     pub behavior_loop_buffer: f32,
+    pub damaging_player: bool,
 }
 
 impl Enemy {
@@ -58,10 +59,16 @@ impl Enemy {
             x_direction: XDirection::Right,
             y_direction: YDirection::None,
             behavior_loop_buffer: 0.0,
+            damaging_player: false,
         }
     }
 
     pub fn update(&mut self, dt: f32, current_room_tile_map: HashMap<(i32, i32), Tile>, current_room_width: i32, current_room_height: i32) {
+        const GRAVITY_UP: f32 = 1050.0;
+        const GRAVITY_DOWN: f32 = 1500.0;
+
+        self.damaging_player = false;
+
         if self.aggrivated {
             // engaged; go after player
             self.enemy_aggrivated_behavior(dt);
@@ -69,13 +76,18 @@ impl Enemy {
             // not engaged; perform idle behavior
             self.enemy_idle_behavior(dt);
         }
+
+        let gravity = if self.vel_y < 0.0 { GRAVITY_UP } else { GRAVITY_DOWN };
+        self.vel_y += gravity * dt;
+
+        self.on_ground = false;
+        self.y += self.vel_y * dt;
+        self.resolve_vertical_collisions(current_room_tile_map.clone(), current_room_width, current_room_height);
         
         self.hitting_wall_right = false;
         self.hitting_wall_left = false;
         self.x += self.vel_x * dt;
         self.resolve_horizontal_collisions(current_room_tile_map, current_room_width, current_room_height);
-
-        self.y += self.vel_y * dt;
     }
 
     pub fn draw(&self) {
@@ -86,14 +98,6 @@ impl Enemy {
             self.eheight * TILE_SIZE,
             Color::from_rgba(255, 255, 255, 255),
         );
-    }
-
-    fn enemy_aggrivated_behavior(&mut self, dt: f32) {
-        match self.enemy_type {
-            EnemyType::TestEnemy => {
-                todo!();
-            }
-        }
     }
 
     fn enemy_idle_behavior(&mut self, dt: f32) {
@@ -122,6 +126,14 @@ impl Enemy {
                         self.behavior_loop_buffer = 2.0;
                     }
                 }
+            }
+        }
+    }
+
+    fn enemy_aggrivated_behavior(&mut self, dt: f32) {
+        match self.enemy_type {
+            EnemyType::TestEnemy => {
+                todo!();
             }
         }
     }
@@ -159,8 +171,34 @@ impl Enemy {
         }
     }
 
-    fn resolve_vertical_collision(&mut self, current_room_tile_map: HashMap<(i32, i32), Tile>) {
-        todo!();
+    fn resolve_vertical_collisions(&mut self, current_room_tile_map: HashMap<(i32, i32), Tile>, current_room_width: i32, current_room_height: i32) {
+        match self.ewidth {
+            1.0 => {
+                let left_x = (self.x / TILE_SIZE).floor() as i32;
+                let right_x = ((self.x + self.ewidth * TILE_SIZE - 1.0) / TILE_SIZE).floor() as i32;
+
+                if self.vel_y >= 0.0 {
+                    // enemy is falling
+                    let next_bottom = (self.y / TILE_SIZE).floor() as i32;
+                    if self.is_solid(left_x, next_bottom, current_room_tile_map.clone(), current_room_width, current_room_height) || self.is_solid(right_x, next_bottom, current_room_tile_map.clone(), current_room_width, current_room_height) {
+                        self.y = next_bottom as f32 * TILE_SIZE;
+                        self.vel_y = 0.0;
+                        self.on_ground = true;
+                        self.is_jumping = false;
+                        // todo!("spike interaction")
+                    }
+                } else if self.vel_y < 0.0 {
+                    // enemy is jumping
+                    self.is_jumping = true;
+                    let next_top = ((self.y - self.eheight * TILE_SIZE) / TILE_SIZE).floor() as i32;
+                    if self.is_solid(left_x, next_top, current_room_tile_map.clone(), current_room_width, current_room_height) || self.is_solid(right_x, next_top, current_room_tile_map.clone(), current_room_width, current_room_height) {
+                        self.y = ((next_top + 1) as f32 + self.eheight) * TILE_SIZE;
+                        self.vel_y = 0.0;
+                    }
+                }
+            },
+            _ => todo!()
+        }
     }
 
     fn is_solid(&self, x: i32, y: i32, current_room_tile_map: HashMap<(i32, i32), Tile>, current_room_width: i32, current_room_height: i32) -> bool {
