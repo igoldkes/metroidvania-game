@@ -411,14 +411,24 @@ impl Player {
     }*/
 
     pub fn draw(&self) {
-        draw_rectangle(
-            self.x,
-            self.y - self.pheight as f32 * TILE_SIZE,
-            self.pwidth as f32 * TILE_SIZE,
-            self.pheight as f32 * TILE_SIZE,
-            Color::from_rgba(255, 0, 0, 80),
-        );
-        
+        if self.damage_blocked_buffer <= 0.0 {
+            draw_rectangle(
+                self.x,
+                self.y - self.pheight as f32 * TILE_SIZE,
+                self.pwidth as f32 * TILE_SIZE,
+                self.pheight as f32 * TILE_SIZE,
+                Color::from_rgba(255, 0, 0, 80),
+            );
+        } else {
+            draw_rectangle(
+                self.x,
+                self.y - self.pheight as f32 * TILE_SIZE,
+                self.pwidth as f32 * TILE_SIZE,
+                self.pheight as f32 * TILE_SIZE,
+                Color::from_rgba(0, 0, 255, 80),
+            );
+        }
+            
         if self.is_attacking {
             match self.attack_direction {
                 AttackDirection::Right => {
