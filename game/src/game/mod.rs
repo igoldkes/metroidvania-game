@@ -325,6 +325,10 @@ impl GameState {
                 for enemy in &mut enemies {
                     enemy.update(dt, self.current_room.tile_map.clone(), self.current_room.width, self.current_room.height);
                     if enemy.alive {
+                        if !self.player.is_attacking {
+                            enemy.being_hit = false;
+                        }
+
                         if self.resolve_enemy_collisions(&enemy) && self.player.damage_blocked_buffer <= 0.0 {
                             // player overlapping with enemy, takes damage
                             self.player.lives -= 1;
@@ -332,7 +336,14 @@ impl GameState {
                         }
                         if self.resolve_player_attack_collisions(&enemy) {
                             // player attack hitbox overlapping with enemy hitbox, enemy takes damage
-                            enemy.health -= 50.0;
+                            if !enemy.being_hit {
+                                // current attack has not yet hit the enemy, so apply damage
+                                enemy.health -= 50.0;
+                                enemy.being_hit = true;
+                            } else {
+                                // current attack has already hit the enemy, so do not apply damage
+
+                            }
                         }
                     }
                 }

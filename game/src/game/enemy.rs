@@ -34,6 +34,7 @@ pub struct Enemy {
     pub damaging_player: bool,
     pub health: f32,
     pub alive: bool,
+    pub being_hit: bool,
 }
 
 impl Enemy {
@@ -68,6 +69,7 @@ impl Enemy {
             damaging_player: false,
             health,
             alive: true,
+            being_hit: false,
         }
     }
 
@@ -106,13 +108,23 @@ impl Enemy {
 
     pub fn draw(&self) {
         if self.alive {
-            draw_rectangle(
-                self.x,
-                self.y - self.eheight * TILE_SIZE,
-                self.ewidth * TILE_SIZE,
-                self.eheight * TILE_SIZE,
-                Color::from_rgba(255, 255, 255, 255),
-            );
+            if !self.being_hit {
+                draw_rectangle(
+                    self.x,
+                    self.y - self.eheight * TILE_SIZE,
+                    self.ewidth * TILE_SIZE,
+                    self.eheight * TILE_SIZE,
+                    Color::from_rgba(255, 255, 255, 255),
+                );
+            } else {
+                draw_rectangle(
+                    self.x,
+                    self.y - self.eheight * TILE_SIZE,
+                    self.ewidth * TILE_SIZE,
+                    self.eheight * TILE_SIZE,
+                    Color::from_rgba(255, 0, 0, 255),
+                );
+            }
         }
     }
 
