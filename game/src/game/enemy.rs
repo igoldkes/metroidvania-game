@@ -32,6 +32,8 @@ pub struct Enemy {
     pub y_direction: YDirection,
     pub behavior_loop_buffer: f32,
     pub damaging_player: bool,
+    pub health: f32,
+    pub alive: bool,
 }
 
 impl Enemy {
@@ -41,6 +43,10 @@ impl Enemy {
         };
         let eheight = match enemy_type {
             EnemyType::TestEnemy => 1.0,
+        };
+
+        let health = match enemy_type {
+            EnemyType::TestEnemy => 100.0,
         };
 
         Self {
@@ -60,6 +66,8 @@ impl Enemy {
             y_direction: YDirection::None,
             behavior_loop_buffer: 0.0,
             damaging_player: false,
+            health,
+            alive: true,
         }
     }
 
@@ -69,35 +77,43 @@ impl Enemy {
 
         self.damaging_player = false;
 
-        if self.aggrivated {
-            // engaged; go after player
-            self.enemy_aggrivated_behavior(dt);
-        } else {
-            // not engaged; perform idle behavior
-            self.enemy_idle_behavior(dt);
+        if self.health <= 0.0 {
+            self.alive = false;
         }
 
-        let gravity = if self.vel_y < 0.0 { GRAVITY_UP } else { GRAVITY_DOWN };
-        self.vel_y += gravity * dt;
+        if self.alive {
+            if self.aggrivated {
+                // engaged; go after player
+                self.enemy_aggrivated_behavior(dt);
+            } else {
+                // not engaged; perform idle behavior
+                self.enemy_idle_behavior(dt);
+            }
 
-        self.on_ground = false;
-        self.y += self.vel_y * dt;
-        self.resolve_vertical_collisions(current_room_tile_map.clone(), current_room_width, current_room_height);
-        
-        self.hitting_wall_right = false;
-        self.hitting_wall_left = false;
-        self.x += self.vel_x * dt;
-        self.resolve_horizontal_collisions(current_room_tile_map, current_room_width, current_room_height);
+            let gravity = if self.vel_y < 0.0 { GRAVITY_UP } else { GRAVITY_DOWN };
+            self.vel_y += gravity * dt;
+
+            self.on_ground = false;
+            self.y += self.vel_y * dt;
+            self.resolve_vertical_collisions(current_room_tile_map.clone(), current_room_width, current_room_height);
+            
+            self.hitting_wall_right = false;
+            self.hitting_wall_left = false;
+            self.x += self.vel_x * dt;
+            self.resolve_horizontal_collisions(current_room_tile_map, current_room_width, current_room_height);
+        }
     }
 
     pub fn draw(&self) {
-        draw_rectangle(
-            self.x,
-            self.y - self.eheight * TILE_SIZE,
-            self.ewidth * TILE_SIZE,
-            self.eheight * TILE_SIZE,
-            Color::from_rgba(255, 255, 255, 255),
-        );
+        if self.alive {
+            draw_rectangle(
+                self.x,
+                self.y - self.eheight * TILE_SIZE,
+                self.ewidth * TILE_SIZE,
+                self.eheight * TILE_SIZE,
+                Color::from_rgba(255, 255, 255, 255),
+            );
+        }
     }
 
     fn enemy_idle_behavior(&mut self, dt: f32) {

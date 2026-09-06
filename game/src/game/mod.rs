@@ -11,6 +11,8 @@ use macroquad::experimental::animation::{AnimatedSprite, Animation};
 
 use std::collections::HashMap;
 
+use crate::game::player::AttackDirection;
+
 use player::{Player, RoomChange};
 use enemy::{Enemy, EnemyType};
 use screens::startup_ui::draw_startup_overlay;
@@ -322,10 +324,16 @@ impl GameState {
 
                 for enemy in &mut enemies {
                     enemy.update(dt, self.current_room.tile_map.clone(), self.current_room.width, self.current_room.height);
-                    if self.resolve_enemy_collisions(enemy.clone()) && self.player.damage_blocked_buffer <= 0.0 {
-                        // player overlapping with enemy, takes damage
-                        self.player.lives -= 1;
-                        self.player.damage_blocked_buffer = 2.0;
+                    if enemy.alive {
+                        if self.resolve_enemy_collisions(&enemy) && self.player.damage_blocked_buffer <= 0.0 {
+                            // player overlapping with enemy, takes damage
+                            self.player.lives -= 1;
+                            self.player.damage_blocked_buffer = 2.0;
+                        }
+                        if self.resolve_player_attack_collisions(&enemy) {
+                            // player attack hitbox overlapping with enemy hitbox, enemy takes damage
+                            enemy.health -= 50.0;
+                        }
                     }
                 }
 
@@ -403,6 +411,33 @@ impl GameState {
                 );
             }
 
+            // update attack hitbox position
+            match self.player.attack_direction {
+                AttackDirection::Right => {
+                    self.player.attack_x = self.player.x + self.player.pwidth * TILE_SIZE;
+                    self.player.attack_y = self.player.y - self.player.pheight / 2.0 * TILE_SIZE - 6.0;
+                    self.player.attack_width = 40.0;
+                    self.player.attack_height = 12.0;
+                }
+                AttackDirection::Left => {
+                    self.player.attack_x = self.player.x - 40.0;
+                    self.player.attack_y = self.player.y - self.player.pheight / 2.0 * TILE_SIZE - 6.0;
+                    self.player.attack_width = 40.0;
+                    self.player.attack_height = 12.0;
+                }
+                AttackDirection::Up => {
+                    self.player.attack_x = self.player.x + self.player.pwidth / 2.0 * TILE_SIZE - 6.0;
+                    self.player.attack_y = self.player.y - self.player.pheight * TILE_SIZE - 40.0;
+                    self.player.attack_width = 12.0;
+                    self.player.attack_height = 40.0;
+                }
+                AttackDirection::Down => {
+                    self.player.attack_x = self.player.x + self.player.pwidth / 2.0 * TILE_SIZE - 6.0;
+                    self.player.attack_y = self.player.y;
+                    self.player.attack_width = 12.0;
+                    self.player.attack_height = 40.0;
+                }
+            }
             self.player.draw();
 
             // loop through enemies in the room and draw them
@@ -658,42 +693,28 @@ impl GameState {
         }
     }
 
-    fn resolve_enemy_collisions(&self, enemy: Enemy) -> bool {
-        let x_distance = (self.player.x - enemy.x).abs();
-        let y_distance = (self.player.y - enemy.y).abs();
-
-        let x_threshold = if self.player.x <= enemy.x {
-            // use player width
-            self.player.pwidth * TILE_SIZE
-        } else {
-            // if self.player.x > enemy.x
-            // use enemy width
-            enemy.ewidth * TILE_SIZE
+    fn resolve_enemy_collisions(&self, enemy: &Enemy) -> bool {
+        let colliding = {
+            self.player.x < enemy.x + enemy.ewidth * TILE_SIZE &&
+            self.player.x + self.player.pwidth * TILE_SIZE > enemy.x &&
+            self.player.y < enemy.y + enemy.eheight * TILE_SIZE &&
+            self.player.y + self.player.pheight * TILE_SIZE > enemy.y
         };
+        colliding
+    }
 
-        let y_threshold = if self.player.y <= enemy.y {
-            // use enemy height
-            enemy.eheight * TILE_SIZE
-        } else {
-            // if self.player.y > enemy.y
-            // use player height
-            self.player.pheight * TILE_SIZE
-        };
-
-        // check whether the player hitbox is overlapping with enemy hitbox on the x-axis
-        if x_distance >= x_threshold {
-            // no collision on x-axis
+    fn resolve_player_attack_collisions(&self, enemy: &Enemy) -> bool {
+        if !self.player.is_attacking {
             return false;
-        } else {
-            // collision on x-axis, check y-axis
-            if y_distance >= y_threshold {
-                // no collisions on y-axis, player takes no damage
-                return false;
-            } else {
-                // collision on y-axis, player takes damage
-                return true;
-            }
         }
+
+        let colliding = {
+            self.player.attack_x < enemy.x + enemy.ewidth * TILE_SIZE &&
+            self.player.attack_x + self.player.attack_width * TILE_SIZE > enemy.x &&
+            self.player.attack_y < enemy.y + enemy.eheight * TILE_SIZE &&
+            self.player.attack_y + self.player.attack_height * TILE_SIZE > enemy.y
+        };
+        colliding
     }
 }
 

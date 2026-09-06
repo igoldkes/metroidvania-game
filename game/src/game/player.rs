@@ -63,6 +63,10 @@ pub struct Player {
     jackie_paper_walking_texture: Texture2D,
     jackie_paper_walking_animation: AnimatedSprite,
     pub lives: usize,
+    pub attack_x: f32,
+    pub attack_y: f32,
+    pub attack_width: f32,
+    pub attack_height: f32,
 }
 
 impl Player {
@@ -98,6 +102,10 @@ impl Player {
             jackie_paper_walking_texture,
             jackie_paper_walking_animation,
             lives: 5,
+            attack_x: x + TILE_SIZE,
+            attack_y: y - TILE_SIZE - 6.0,
+            attack_width: 40.0,
+            attack_height: 12.0,
         }
     }
 
@@ -428,8 +436,18 @@ impl Player {
                 Color::from_rgba(0, 0, 255, 80),
             );
         }
-            
+        
         if self.is_attacking {
+            draw_rectangle(
+                self.attack_x,
+                self.attack_y,
+                self.attack_width,
+                self.attack_height,
+                Color::from_rgba(0, 255, 0, 80),
+            );
+        }
+
+        /*if self.is_attacking {
             match self.attack_direction {
                 AttackDirection::Right => {
                     draw_rectangle(
@@ -468,7 +486,7 @@ impl Player {
                     );
                 }
             }
-        }
+        }*/
     }
 
     pub fn draw1(&mut self) {
