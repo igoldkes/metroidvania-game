@@ -67,6 +67,8 @@ pub struct Player {
     pub attack_y: f32,
     pub attack_width: f32,
     pub attack_height: f32,
+    pub knockback_vel_x: f32,
+    pub knockback_vel_y: f32,
 }
 
 impl Player {
@@ -106,6 +108,8 @@ impl Player {
             attack_y: y - TILE_SIZE - 6.0,
             attack_width: 40.0,
             attack_height: 12.0,
+            knockback_vel_x: 0.0,
+            knockback_vel_y: 0.0,
         }
     }
 
@@ -122,6 +126,17 @@ impl Player {
 
         if self.damage_blocked_buffer > 0.0 {
             self.damage_blocked_buffer -= dt;
+        }
+
+        if self.knockback_vel_x > 0.0 {
+            self.knockback_vel_x = (self.knockback_vel_x - 400.0 * dt).max(0.0);
+        } else if self.knockback_vel_x < 0.0 {
+            self.knockback_vel_x = (self.knockback_vel_x + 400.0 * dt).min(0.0);
+        }
+        if self.knockback_vel_y > 0.0 {
+            self.knockback_vel_y = (self.knockback_vel_y - 400.0 * dt).max(0.0);
+        } else if self.knockback_vel_y < 0.0 {
+            self.knockback_vel_y = (self.knockback_vel_y + 400.0 * dt).min(0.0);
         }
 
         if !self.paused && self.movement_blocked_buffer <= 0.0 {
@@ -202,6 +217,13 @@ impl Player {
                 self.vel_x = 0.0;
                 self.vel_y = 0.0;
             }
+        }
+
+        if self.knockback_vel_x != 0.0 {
+            self.vel_x = self.knockback_vel_x;
+        }
+        if self.knockback_vel_y != 0.0 {
+            self.vel_y = self.knockback_vel_y;
         }
 
         let gravity = if self.vel_y < 0.0 { GRAVITY_UP } else { GRAVITY_DOWN };

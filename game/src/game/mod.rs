@@ -333,16 +333,51 @@ impl GameState {
                             // player overlapping with enemy, takes damage
                             self.player.lives -= 1;
                             self.player.damage_blocked_buffer = 2.0;
+
+                            // apply knockback to player
+                            let knockback_speed = 300.0;
+                            let knockback_up = -150.0;
+
+                            let knockback_direction = if self.player.x <= enemy.x {
+                                // player is to the left of the enemy, so knockback to the left
+                                -1.0
+                            } else {
+                                // player is to the right of the enemy, so knockback to the right
+                                1.0
+                            };
+
+                            self.player.knockback_vel_x = knockback_speed * knockback_direction;
+                            self.player.knockback_vel_y = knockback_up;
+
                         }
                         if self.resolve_player_attack_collisions(&enemy) {
                             // player attack hitbox overlapping with enemy hitbox, enemy takes damage
                             if !enemy.being_hit {
                                 // current attack has not yet hit the enemy, so apply damage
-                                enemy.health -= 50.0;
+                                enemy.health -= 10.0;
                                 enemy.being_hit = true;
-                            } else {
-                                // current attack has already hit the enemy, so do not apply damage
 
+                                let knockback_speed = 300.0;
+                                let knockback_up = -150.0;
+
+                                match self.player.attack_direction {
+                                    AttackDirection::Right => {
+                                        enemy.knockback_vel_x = knockback_speed;
+                                        enemy.knockback_vel_y = knockback_up;
+                                    }
+                                    AttackDirection::Left => {
+                                        enemy.knockback_vel_x = -knockback_speed;
+                                        enemy.knockback_vel_y = knockback_up;
+                                    }
+                                    AttackDirection::Up => {
+                                        enemy.knockback_vel_x = 0.0;
+                                        enemy.knockback_vel_y = -knockback_speed;
+                                    }
+                                    AttackDirection::Down => {
+                                        enemy.knockback_vel_x = 0.0;
+                                        enemy.knockback_vel_y = knockback_speed;
+                                    }
+                                }
                             }
                         }
                     }
@@ -708,8 +743,8 @@ impl GameState {
         let colliding = {
             self.player.x < enemy.x + enemy.ewidth * TILE_SIZE &&
             self.player.x + self.player.pwidth * TILE_SIZE > enemy.x &&
-            self.player.y < enemy.y + enemy.eheight * TILE_SIZE &&
-            self.player.y + self.player.pheight * TILE_SIZE > enemy.y
+            self.player.y - self.player.pheight * TILE_SIZE < enemy.y &&
+            self.player.y > enemy.y - enemy.eheight * TILE_SIZE
         };
         colliding
     }
@@ -721,9 +756,9 @@ impl GameState {
 
         let colliding = {
             self.player.attack_x < enemy.x + enemy.ewidth * TILE_SIZE &&
-            self.player.attack_x + self.player.attack_width * TILE_SIZE > enemy.x &&
-            self.player.attack_y < enemy.y + enemy.eheight * TILE_SIZE &&
-            self.player.attack_y + self.player.attack_height * TILE_SIZE > enemy.y
+            self.player.attack_x + self.player.attack_width > enemy.x &&
+            self.player.attack_y < enemy.y &&
+            self.player.attack_y + self.player.attack_height > enemy.y - enemy.eheight * TILE_SIZE
         };
         colliding
     }

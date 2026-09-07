@@ -35,6 +35,9 @@ pub struct Enemy {
     pub health: f32,
     pub alive: bool,
     pub being_hit: bool,
+    pub knockback_buffer: f32,
+    pub knockback_vel_x: f32,
+    pub knockback_vel_y: f32,
 }
 
 impl Enemy {
@@ -70,6 +73,9 @@ impl Enemy {
             health,
             alive: true,
             being_hit: false,
+            knockback_buffer: 0.0,
+            knockback_vel_x: 0.0,
+            knockback_vel_y: 0.0,
         }
     }
 
@@ -90,6 +96,24 @@ impl Enemy {
             } else {
                 // not engaged; perform idle behavior
                 self.enemy_idle_behavior(dt);
+            }
+
+            if self.knockback_vel_x > 0.0 {
+                self.knockback_vel_x = (self.knockback_vel_x - 400.0 * dt).max(0.0);
+            } else if self.knockback_vel_x < 0.0 {
+                self.knockback_vel_x = (self.knockback_vel_x + 400.0 * dt).min(0.0);
+            }
+            if self.knockback_vel_y > 0.0 {
+                self.knockback_vel_y = (self.knockback_vel_y - 400.0 * dt).max(0.0);
+            } else if self.knockback_vel_y < 0.0 {
+                self.knockback_vel_y = (self.knockback_vel_y + 400.0 * dt).min(0.0);
+            }
+
+            if self.knockback_vel_x != 0.0 {
+                self.vel_x = self.knockback_vel_x;
+            }
+            if self.knockback_vel_y != 0.0 {
+                self.vel_y = self.knockback_vel_y;
             }
 
             let gravity = if self.vel_y < 0.0 { GRAVITY_UP } else { GRAVITY_DOWN };
@@ -139,7 +163,9 @@ impl Enemy {
                     // walk left for 2 seconds or until hitting an obstacle
                     self.x_direction = XDirection::Left;
                     if !self.hitting_wall_left {
-                        self.vel_x = -100.0;
+                        if self.knockback_vel_x == 0.0 {
+                            self.vel_x = -100.0;
+                        }
                     } else {
                         // hit a wall moving left; move right
                         self.behavior_loop_buffer = 0.0;
@@ -148,7 +174,9 @@ impl Enemy {
                     // walk right for 2 seconds or until hitting an obstacle
                     self.x_direction = XDirection::Right;
                     if !self.hitting_wall_right {
-                        self.vel_x = 100.0;
+                        if self.knockback_vel_x == 0.0 {
+                            self.vel_x = 100.0;
+                        }
                     } else {
                         // hit a wall moving right; move left
                         self.behavior_loop_buffer = 2.0;
@@ -251,5 +279,9 @@ impl Enemy {
             Tile::Spikes => true,
             _ => false,
         }
+    }
+
+    fn knocked_back(&mut self, attack_direction: AttackDirection) {
+        
     }
 }
