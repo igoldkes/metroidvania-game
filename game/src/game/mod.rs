@@ -376,6 +376,10 @@ impl GameState {
                                     AttackDirection::Down => {
                                         enemy.knockback_vel_x = 0.0;
                                         enemy.knockback_vel_y = knockback_speed;
+                                        
+                                        self.player.vel_y = -500.0;
+                                        self.player.is_jumping = true;
+                                        self.player.on_ground = false;
                                     }
                                 }
                             }

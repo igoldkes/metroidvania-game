@@ -723,12 +723,12 @@ impl Player {
             // moving right
             
             let next_right = ((self.x + self.pwidth * TILE_SIZE) / TILE_SIZE).floor() as i32;
-            if self.current_room.is_solid(next_right, top_y) || self.current_room.is_solid(next_right, bottom_y) /*|| self.current_room.is_solid(next_right, middle_y)*/ {
+            if self.current_room.is_solid(next_right, top_y) || self.current_room.is_solid(next_right, bottom_y) || self.current_room.is_solid(next_right, middle_y) {
                 self.x = (next_right as f32) * TILE_SIZE - self.pwidth * TILE_SIZE;
                 self.vel_x = 0.0;
                 self.hitting_wall_right = true;
                 if self.damage_blocked_buffer <= 0.0 {
-                    if self.current_room.is_spikes(next_right, top_y) || self.current_room.is_spikes(next_right, bottom_y) /*|| self.current_room.is_spikes(next_right, middle_y)*/ {
+                    if self.current_room.is_spikes(next_right, top_y) || self.current_room.is_spikes(next_right, bottom_y) || self.current_room.is_spikes(next_right, middle_y) {
                         println!("spikes!");
                         self.lives -= 1;
                         self.damage_blocked_buffer = 2.0;
