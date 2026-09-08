@@ -69,6 +69,12 @@ pub struct Player {
     pub attack_height: f32,
     pub knockback_vel_x: f32,
     pub knockback_vel_y: f32,
+    pub double_jump_enabled: bool,
+    pub wall_jump_enabled: bool,
+    pub dash_enabled: bool,
+    pub dash_buffer: f32,
+    pub dashed: bool,
+    pub sprinting: bool,
 }
 
 impl Player {
@@ -110,6 +116,12 @@ impl Player {
             attack_height: 12.0,
             knockback_vel_x: 0.0,
             knockback_vel_y: 0.0,
+            double_jump_enabled: true,
+            wall_jump_enabled: true,
+            dash_enabled: true,
+            dash_buffer: 0.0,
+            dashed: false,
+            sprinting: false,
         }
     }
 
@@ -119,6 +131,7 @@ impl Player {
         const JUMP_FORCE: f32 = -650.0;
         const JUMP_CUT: f32 = 0.1;
         const MOVE_SPEED: f32 = 300.0;
+        const SPRINT_SPEED: f32 = 450.0;
 
         if self.movement_blocked_buffer > 0.0 {
             self.movement_blocked_buffer -= dt;
@@ -156,12 +169,20 @@ impl Player {
 
             if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
                 if !self.hitting_wall_right {
-                    self.vel_x = MOVE_SPEED;
+                    if self.sprinting {
+                        self.vel_x = SPRINT_SPEED;
+                    } else {
+                        self.vel_x = MOVE_SPEED;
+                    }
                 }
                 self.x_direction = XDirection::Right;
             } else if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
                 if !self.hitting_wall_left {
-                    self.vel_x = -MOVE_SPEED;
+                    if self.sprinting {
+                        self.vel_x = -SPRINT_SPEED;
+                    } else {
+                        self.vel_x = -MOVE_SPEED;
+                    }
                 }
                 self.x_direction = XDirection::Left;
             } else {
@@ -171,7 +192,7 @@ impl Player {
             if is_key_pressed(KeyCode::Space) {
                 self.jump_buffer_time = 0.15;
             }
-            if self.jump_buffer_time > 0.0 {
+            if self.jump_buffer_time > 0.0 && self.dash_buffer <= 0.0 {
                 self.jump_buffer_time -= dt;
             }
             if self.jump_buffer_time > 0.0 && self.on_ground {
@@ -183,7 +204,28 @@ impl Player {
             if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
                 self.vel_y *= JUMP_CUT;
             }
+            
+            // sprinting
+            if is_key_down(KeyCode::LeftShift) {
+                self.sprinting = true;
+            }
+            if is_key_released(KeyCode::LeftShift) {
+                self.sprinting = false;
+            }
 
+            // dashing
+            if self.on_ground {
+                self.dashed = false;
+            }
+            if self.dash_buffer > 0.0 {
+                self.dash_buffer -= dt;
+                self.dash();
+            }
+            if is_key_pressed(KeyCode::LeftShift) && self.dash_buffer <= 0.0 && !self.dashed {
+                self.dash_buffer = 0.15;
+            }
+
+            // attacking
             if is_key_pressed(KeyCode::Semicolon) && !self.is_attacking {
                 self.is_attacking = true;
                 self.attack_buffer_time = 0.3;
@@ -228,11 +270,14 @@ impl Player {
 
         let gravity = if self.vel_y < 0.0 { GRAVITY_UP } else { GRAVITY_DOWN };
         
-        self.vel_y += gravity * dt;
-        
+        if self.dash_buffer <= 0.0 {
+            self.vel_y += gravity * dt;
+        }
         
         self.on_ground = false;
-        self.y += self.vel_y * dt;
+        if self.dash_buffer <= 0.0 {
+            self.y += self.vel_y * dt;
+        }
         // resolve vertical collisions
         self.resolve_vertical_collisions();
         
@@ -548,6 +593,23 @@ impl Player {
                     self.room_change = RoomChange::Change { door: door.clone() };
                 }
             }
+        }
+    }
+
+    fn dash(&mut self) {
+        self.dashed = true;
+        let dash_speed = 800.0;
+        let dash_direction = match self.x_direction {
+            XDirection::Left => {
+                -1.0
+            }
+            XDirection::Right => {
+                1.0
+            }
+        };
+
+        if self.knockback_vel_x == 0.0 {
+            self.vel_x = dash_speed * dash_direction;
         }
     }
 }
