@@ -75,6 +75,9 @@ pub struct Player {
     pub dash_buffer: f32,
     pub dashed: bool,
     pub sprinting: bool,
+    pub on_wall: bool,
+    pub wall_jump_buffer: f32,
+    pub on_wall_buffer: f32,
 }
 
 impl Player {
@@ -122,6 +125,9 @@ impl Player {
             dash_buffer: 0.0,
             dashed: false,
             sprinting: false,
+            on_wall: false,
+            wall_jump_buffer: 0.0,
+            on_wall_buffer: 0.0,
         }
     }
 
@@ -132,6 +138,12 @@ impl Player {
         const JUMP_CUT: f32 = 0.1;
         const MOVE_SPEED: f32 = 300.0;
         const SPRINT_SPEED: f32 = 450.0;
+
+        if self.on_wall {
+            self.on_wall_buffer = 0.05;
+        } else if self.on_wall_buffer > 0.0 {
+            self.on_wall_buffer -= dt;
+        }
 
         if self.movement_blocked_buffer > 0.0 {
             self.movement_blocked_buffer -= dt;
@@ -153,10 +165,10 @@ impl Player {
         }
 
         if !self.paused && self.movement_blocked_buffer <= 0.0 {
-            if is_key_pressed(KeyCode::Right) || is_key_pressed(KeyCode::D) {
+            if is_key_pressed(KeyCode::Right) || is_key_pressed(KeyCode::D) && self.wall_jump_buffer <= 0.0 {
                 self.x_direction = XDirection::Right;
             }
-            if is_key_pressed(KeyCode::Left) || is_key_pressed(KeyCode::A) {
+            if is_key_pressed(KeyCode::Left) || is_key_pressed(KeyCode::A) && self.wall_jump_buffer <= 0.0 {
                 self.x_direction = XDirection::Left;
             }
             if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
@@ -167,25 +179,59 @@ impl Player {
                 self.y_direction = YDirection::None;
             }
 
+            if self.wall_jump_buffer > 0.0 {
+                println!("wall jumping");
+                self.wall_jump_buffer -= dt;
+                let direction = match self.x_direction {
+                    XDirection::Right => {
+                        1.0
+                    }
+                    XDirection::Left => {
+                        -1.0
+                    }
+                };
+                self.vel_x = direction * MOVE_SPEED;
+            }
+
+            /*if self.on_wall {
+                println!("on wall");
+                if self.wall_jump_buffer > 0.0 {
+                    println!("jumped");
+                }
+            }*/
+
             if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
-                if !self.hitting_wall_right {
+                if !self.hitting_wall_right && self.wall_jump_buffer <= 0.0 {
+                    self.on_wall = false;
                     if self.sprinting {
                         self.vel_x = SPRINT_SPEED;
                     } else {
                         self.vel_x = MOVE_SPEED;
                     }
+                } else if self.wall_jump_enabled && !self.on_ground {
+                    self.on_wall = true;
+                    //self.vel_x = 0.0;
                 }
-                self.x_direction = XDirection::Right;
+                if self.wall_jump_buffer <= 0.0 {
+                    self.x_direction = XDirection::Right;
+                }
             } else if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
-                if !self.hitting_wall_left {
+                if !self.hitting_wall_left && self.wall_jump_buffer <= 0.0 {
+                    self.on_wall = false;
                     if self.sprinting {
                         self.vel_x = -SPRINT_SPEED;
                     } else {
                         self.vel_x = -MOVE_SPEED;
                     }
+                } else if self.wall_jump_enabled && !self.on_ground {
+                    self.on_wall = true;
+                    //self.vel_x = 0.0;
                 }
-                self.x_direction = XDirection::Left;
+                if self.wall_jump_buffer <= 0.0 {
+                    self.x_direction = XDirection::Left;
+                }
             } else {
+                self.on_wall = false;
                 self.vel_x = 0.0;
             }
 
@@ -214,7 +260,7 @@ impl Player {
             }
 
             // dashing
-            if self.on_ground {
+            if self.on_ground || self.on_wall_buffer > 0.0 {
                 self.dashed = false;
             }
             if self.dash_buffer > 0.0 {
@@ -223,6 +269,34 @@ impl Player {
             }
             if is_key_pressed(KeyCode::LeftShift) && self.dash_buffer <= 0.0 && !self.dashed {
                 self.dash_buffer = 0.15;
+            }
+
+            // wall jumping
+            if self.hitting_wall_right && !self.on_ground && self.wall_jump_enabled {
+                self.on_wall = true;
+                self.x_direction = XDirection::Left;
+            }
+            if self.hitting_wall_left && !self.on_ground && self.wall_jump_enabled {
+                self.on_wall = true;
+                self.x_direction = XDirection::Right;
+            }
+
+            if self.wall_jump_enabled && self.on_wall_buffer > 0.0 {
+                if is_key_pressed(KeyCode::Space) {
+                    self.vel_y = JUMP_FORCE;
+                    self.is_jumping = true;
+                    self.on_wall = false;
+                    self.wall_jump_buffer = 0.15;
+                    /*if self.hitting_wall_right {
+                        self.x_direction = XDirection::Left;
+                    }
+                    if self.hitting_wall_left {
+                        self.x_direction = XDirection::Right;
+                    }*/
+                }
+                if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
+                    self.vel_y *= JUMP_CUT;
+                }
             }
 
             // attacking
@@ -268,9 +342,17 @@ impl Player {
             self.vel_y = self.knockback_vel_y;
         }
 
-        let gravity = if self.vel_y < 0.0 { GRAVITY_UP } else { GRAVITY_DOWN };
-        
+        let gravity = if self.vel_y < 0.0 {
+            GRAVITY_UP
+        } else if self.vel_y >= 0.0 && self.on_wall_buffer <= 0.0 {
+            GRAVITY_DOWN
+        } else {
+            GRAVITY_DOWN / 10.0
+        };
+
         if self.dash_buffer <= 0.0 {
+            self.vel_y += gravity * dt;
+        } else if self.on_wall_buffer > 0.0 {
             self.vel_y += gravity * dt;
         }
         
@@ -349,6 +431,15 @@ impl Player {
                 self.pwidth as f32 * TILE_SIZE,
                 self.pheight as f32 * TILE_SIZE,
                 Color::from_rgba(0, 0, 255, 80),
+            );
+        }
+        if self.on_wall_buffer > 0.0 {
+            draw_rectangle(
+                self.x,
+                self.y - self.pheight as f32 * TILE_SIZE,
+                self.pwidth as f32 * TILE_SIZE,
+                self.pheight as f32 * TILE_SIZE,
+                Color::from_rgba(255, 255, 255, 80),
             );
         }
         
@@ -607,9 +698,12 @@ impl Player {
                 1.0
             }
         };
-
         if self.knockback_vel_x == 0.0 {
             self.vel_x = dash_speed * dash_direction;
         }
+    }
+
+    fn wall_jump(&mut self) {
+
     }
 }
