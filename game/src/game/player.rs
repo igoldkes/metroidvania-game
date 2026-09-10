@@ -78,6 +78,7 @@ pub struct Player {
     pub on_wall: bool,
     pub wall_jump_buffer: f32,
     pub on_wall_buffer: f32,
+    pub wall_slide_timer: f32,
 }
 
 impl Player {
@@ -128,6 +129,7 @@ impl Player {
             on_wall: false,
             wall_jump_buffer: 0.0,
             on_wall_buffer: 0.0,
+            wall_slide_timer: 0.0,
         }
     }
 
@@ -180,7 +182,6 @@ impl Player {
             }
 
             if self.wall_jump_buffer > 0.0 {
-                println!("wall jumping");
                 self.wall_jump_buffer -= dt;
                 let direction = match self.x_direction {
                     XDirection::Right => {
@@ -272,13 +273,20 @@ impl Player {
             }
 
             // wall jumping
-            if self.hitting_wall_right && !self.on_ground && self.wall_jump_enabled {
+
+            /*if self.hitting_wall_right && !self.on_ground && self.wall_jump_enabled {
                 self.on_wall = true;
                 self.x_direction = XDirection::Left;
             }
             if self.hitting_wall_left && !self.on_ground && self.wall_jump_enabled {
                 self.on_wall = true;
                 self.x_direction = XDirection::Right;
+            }*/
+
+            if self.on_wall_buffer > 0.0 {
+                self.wall_slide_timer += dt;
+            } else {
+                self.wall_slide_timer = 0.0;
             }
 
             if self.wall_jump_enabled && self.on_wall_buffer > 0.0 {
@@ -293,10 +301,24 @@ impl Player {
                     if self.hitting_wall_left {
                         self.x_direction = XDirection::Right;
                     }*/
+                    self.x_direction = match self.x_direction {
+                        XDirection::Right => {
+                            XDirection::Left
+                        }
+                        XDirection::Left => {
+                            XDirection::Right
+                        }
+                    }
                 }
                 if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
                     self.vel_y *= JUMP_CUT;
                 }
+            }
+
+            let mut n = 0;
+            if self.is_attacking {
+                n += 1;
+                println!("{:?}, {:?}, {}", self.x_direction, self.attack_direction, n);
             }
 
             // attacking
@@ -347,7 +369,7 @@ impl Player {
         } else if self.vel_y >= 0.0 && self.on_wall_buffer <= 0.0 {
             GRAVITY_DOWN
         } else {
-            GRAVITY_DOWN / 10.0
+            ((GRAVITY_DOWN / 3.0) * self.wall_slide_timer * self.wall_slide_timer).min(GRAVITY_DOWN / 2.0)
         };
 
         if self.dash_buffer <= 0.0 {
