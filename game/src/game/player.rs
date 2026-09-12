@@ -83,6 +83,7 @@ pub struct Player {
     pub dash_direction: f32,
     pub double_jumped: bool,
     pub is_double_jumping: bool,
+    pub dash_cooldown: f32,
 }
 
 impl Player {
@@ -138,6 +139,7 @@ impl Player {
             dash_direction: 1.0,
             double_jumped: false,
             is_double_jumping: false,
+            dash_cooldown: 0.0,
         }
     }
 
@@ -255,9 +257,10 @@ impl Player {
 
 
             // DASH INPUT DETECTION
-            if is_key_pressed(KeyCode::LeftShift) && self.dash_buffer <= 0.0 && !self.dashed {
+            if is_key_pressed(KeyCode::LeftShift) && self.dash_buffer <= 0.0 && !self.dashed && self.dash_cooldown <= 0.0 {
                 // if left shift is pressed and player is not currently dashing and player has not already dashed, then dash for 0.15s
                 self.dash_buffer = 0.15;
+                self.dash_cooldown = 0.65;
                 self.dash_direction = match self.x_direction {
                     XDirection::Right => {
                         if self.on_wall {
@@ -292,6 +295,8 @@ impl Player {
                 if self.knockback_vel_x == 0.0 {
                     // if player is not being knocked back, then perform the dash (i.e., knockback interrupts dashing)
                     self.vel_x = dash_speed * self.dash_direction
+                } else {
+                    self.dash_cooldown = 0.0;
                 }
                 self.x_direction = match self.dash_direction {
                     1.0 => {
@@ -304,6 +309,9 @@ impl Player {
                         XDirection::Right
                     }
                 };
+            }
+            if self.dash_cooldown > 0.0 {
+                self.dash_cooldown -= dt;
             }
             // DASH INPUT DETECTION DONE
 
@@ -422,7 +430,7 @@ impl Player {
                 self.is_attacking = false;
             }
             // ATTACK INPUT DETECTION AND LOGIC DONE
-            
+
         } else {
             // if either game is paused or player's movement is blocked, then wait until player is on the ground and then stop moving
             if self.on_ground {
