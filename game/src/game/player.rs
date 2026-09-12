@@ -72,6 +72,7 @@ pub struct Player {
     pub double_jump_enabled: bool,
     pub wall_jump_enabled: bool,
     pub dash_enabled: bool,
+    pub sprint_enabled: bool,
     pub dash_buffer: f32,
     pub dashed: bool,
     pub sprinting: bool,
@@ -79,6 +80,7 @@ pub struct Player {
     pub wall_jump_buffer: f32,
     pub on_wall_buffer: f32,
     pub wall_slide_timer: f32,
+    pub dash_direction: f32,
 }
 
 impl Player {
@@ -123,6 +125,7 @@ impl Player {
             double_jump_enabled: true,
             wall_jump_enabled: true,
             dash_enabled: true,
+            sprint_enabled: true,
             dash_buffer: 0.0,
             dashed: false,
             sprinting: false,
@@ -130,6 +133,7 @@ impl Player {
             wall_jump_buffer: 0.0,
             on_wall_buffer: 0.0,
             wall_slide_timer: 0.0,
+            dash_direction: 1.0,
         }
     }
 
@@ -140,6 +144,339 @@ impl Player {
         const JUMP_CUT: f32 = 0.1;
         const MOVE_SPEED: f32 = 300.0;
         const SPRINT_SPEED: f32 = 450.0;
+        const DASH_SPEED: f32 = 800.0;
+        const KNOCKBACK_DECAY: f32 = 400.0;
+
+        println!("{:?}", self.x_direction);
+
+        // BUFFER DECREMENTS
+        if self.movement_blocked_buffer > 0.0 {
+            self.movement_blocked_buffer -= dt;
+        }
+
+        if self.damage_blocked_buffer > 0.0 {
+            self.damage_blocked_buffer -= dt;
+        }
+        // BUFFER DECREMENTS DONE
+
+        if !self.paused && self.movement_blocked_buffer <= 0.0 {
+            // if game is not paused and player can move, then run the corresponding logic
+
+            // INITIAL DIRECTION SET
+            if is_key_pressed(KeyCode::D) && self.wall_jump_buffer <= 0.0 {
+                // if D is pressed and x_direction is not briefly locked because player just jumped off of a wall, player is facing right
+                self.x_direction = XDirection::Right;
+            }
+            if is_key_pressed(KeyCode::A) && self.wall_jump_buffer <= 0.0 {
+                // if A is pressed and x_direction is not briefly locked because player just jumped off of a wall, player is facing left
+                self.x_direction = XDirection::Left;
+            }
+            if is_key_down(KeyCode::W) {
+                // if W is being held down, player is looking up
+                self.y_direction = YDirection::Up;
+            } else if is_key_down(KeyCode::S) {
+                // if W is not being held down, and S is, player is looking down
+                self.y_direction = YDirection::Down;
+            } else {
+                // if neither W nor S are being held down, player is neither looking up nor down
+                self.y_direction = YDirection::None;
+            }
+            // INITIAL DIRECTIONS SET DONE
+
+
+            // HORIZONTAL MOVEMENT INPUT DETECTION
+            if is_key_down(KeyCode::D) {
+                if !self.hitting_wall_right && self.wall_jump_buffer <= 0.0 {
+                    // self.on_wall = false;
+                    if self.sprinting {
+                        self.vel_x = SPRINT_SPEED;
+                    } else {
+                        self.vel_x = MOVE_SPEED;
+                    }
+                }
+                if self.wall_jump_buffer <= 0.0 {
+                    self.x_direction = XDirection::Right;
+                }
+            } else if is_key_down(KeyCode::A) {
+                if !self.hitting_wall_left && self.wall_jump_buffer <= 0.0 {
+                    // self.on_wall = false;
+                    if self.sprinting {
+                        self.vel_x = -SPRINT_SPEED;
+                    } else {
+                        self.vel_x = -MOVE_SPEED;
+                    }
+                }
+                if self.wall_jump_buffer <= 0.0 {
+                    self.x_direction = XDirection::Left;
+                }
+            } else {
+                // self.on_wall = false;
+                self.vel_x = 0.0;
+            }
+            // HORIZONTAL MOVEMENT INPUT DETECTION DONE
+
+
+            // VERTICAL MOVEMENT INPUT DETECTION
+            if is_key_pressed(KeyCode::Space) {
+                // jump-queuing: if spacebar is pressed, count down a timer from 0.15s
+                self.jump_buffer_time = 0.15;
+            }
+            if self.jump_buffer_time > 0.0 {
+                // if jump-queue timer is greater than 0.0, then register an attempted jump input and decrement the timer
+                if self.on_ground && self.dash_buffer <= 0.0 {
+                    // if player is on the ground and not currently dashing, then allow the jump and set the jump-queue timer to 0.0
+                    self.vel_y = JUMP_FORCE;
+                    self.is_jumping = true;
+                    self.on_ground = false;
+                    self.jump_buffer_time = 0.0;
+                } // todo!("add code for the cases that player is not on the ground and dashing, and the player is on the ground and dashing, and not on the ground and not dashing")
+            }
+            if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
+                // if spacebar is released and player is moving upward, apply jump cut
+                self.vel_y *= JUMP_CUT;
+            }
+            // VERTICAL MOVEMENT INPUT DETECTION DONE
+
+
+            // DASH INPUT DETECTION
+            if is_key_pressed(KeyCode::LeftShift) && self.dash_buffer <= 0.0 && !self.dashed {
+                // if left shift is pressed and player is not currently dashing and player has not already dashed, then dash for 0.15s
+                self.dash_buffer = 0.15;
+                self.dash_direction = match self.x_direction {
+                    XDirection::Right => {
+                        if self.on_wall {
+                            // if player is facing right and on a wall, then dash leftward away from the wall; vel_x < 0.0
+                            self.on_wall = false;
+                            -1.0
+                        } else {
+                            // if player is facing right and not on a wall, dash rightward; vel_x > 0.0
+                            1.0
+                        }
+                    }
+                    XDirection::Left => {
+                        if self.on_wall {
+                            // if player is facing left and on a wall, then dash rightward away from the wall; vel_x > 0.0
+                            self.on_wall = false;
+                            1.0
+                        } else {
+                            // if player is facing left and not on a wall, then dash leftward; vel_x < 0.0
+                            -1.0
+                        }
+                    }
+                };
+            }
+            if self.on_ground || self.on_wall {
+                // if player is on the groudn or on a wall, then player can dash again
+                self.dashed = false;
+            }
+            if self.dash_buffer > 0.0 {
+                // if player is currently dashing, then decrement the dash buffer, set dashed to true, and set horizontal movement speed to dash speed
+                self.dash_buffer -= dt;
+                let dash_speed = DASH_SPEED;
+                if self.knockback_vel_x == 0.0 {
+                    // if player is not being knocked back, then perform the dash (i.e., knockback interrupts dashing)
+                    self.vel_x = dash_speed * self.dash_direction
+                }
+                self.x_direction = match self.dash_direction {
+                    1.0 => {
+                        XDirection::Right
+                    }
+                    -1.0 => {
+                        XDirection::Left
+                    }
+                    _ => {
+                        XDirection::Right
+                    }
+                };
+            }
+            // DASH INPUT DETECTION DONE
+
+
+            // SPRINT INPUT DETECTION
+            if is_key_down(KeyCode::LeftShift) && self.sprint_enabled {
+                // if left shift is being held down, and can sprint, then set sprinting to true
+                self.sprinting = true;
+            } else {
+                // if either left shift is not being held down, or player cannot sprint, then set sprinting to false
+                self.sprinting = false;
+            }
+            // SPRINT INPUT DETECTION DONE
+
+            // WALL JUMP INPUT DETECTION AND LOGIC
+            if self.wall_jump_buffer > 0.0 {
+                self.wall_jump_buffer -= dt;
+                let direction = match self.x_direction {
+                    XDirection::Right => {
+                        1.0
+                    }
+                    XDirection::Left => {
+                        -1.0
+                    }
+                };
+                self.vel_x = direction * MOVE_SPEED;
+            }
+            if self.on_wall_right() || self.on_wall_left() && self.wall_jump_enabled {
+                // if player is not on the ground, can wall jump, and is up against a wall either to the right or the left, then set on_wall to true
+                self.on_wall = true;
+            } else {
+                // if player either cannot jump or both on_wall_right() and on_wall_left() return false, then set on_wall to false
+                self.on_wall = false;
+            }
+            
+            if self.on_wall {
+                // if player is on a wall, increment the wall slide timer
+                self.wall_slide_timer += dt;
+            } else {
+                // if player is not on a wall, set the wall slide timer to 0.0
+                self.wall_slide_timer = 0.0;
+            }
+
+            if self.wall_jump_enabled && self.on_wall {
+                // if player is on a wall and can wall jump, detect input for wall jumps
+                if is_key_pressed(KeyCode::Space) {
+                    // if spacebar is pressed, perform the wall jump
+                    self.vel_y = JUMP_FORCE;
+                    self.is_jumping = true;
+                    self.on_wall = false;
+                    self.jump_buffer_time = 0.0;
+                    self.wall_jump_buffer = 0.15;
+                    self.x_direction = match self.x_direction {
+                        XDirection::Right => {
+                            XDirection::Left
+                        }
+                        XDirection::Left => {
+                            XDirection::Right
+                        }
+                    };
+                }
+                if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
+                    // if spacebar is released and player is moving upward, apply jump cut
+                    self.vel_y *= JUMP_CUT;
+                }
+            }
+            // WALL JUMP INPUT DETECTION AND LOGIC DONE
+
+
+            // ATTACK INPUT DETECTION AND LOGIC
+            if is_key_pressed(KeyCode::Semicolon) && !self.is_attacking {
+                // if smeicolon is pressed and player is not currently attacking, then perform an attack
+                self.is_attacking = true;
+                self.attack_buffer_time = 0.3;
+                self.attack_direction = match self.y_direction {
+                    YDirection::Up => {
+                        // if player is facing up, attack upward
+                        AttackDirection::Up
+                    }
+                    YDirection::Down => {
+                        // if player is facing down, attack downward
+                        AttackDirection::Down
+                    }
+                    YDirection::None => {
+                        // if player is neither facing up nor down, check x_direction
+                        match self.x_direction {
+                            XDirection::Right => {
+                                if self.on_wall {
+                                    // if player is on a wall and facing right, then attack left (away from the wall)
+                                    AttackDirection::Left
+                                } else {
+                                    // if player is not on a wall, attack right
+                                    AttackDirection::Right
+                                }
+                            }
+                            XDirection::Left => {
+                                if self.on_wall {
+                                    // if player is on a wall and facing left, then attack right
+                                    AttackDirection::Right
+                                } else {
+                                    // if player is ot on a wall, attack left
+                                    AttackDirection::Left
+                                }
+                                
+                            }
+                        }
+                    }
+                };
+            }
+            if self.attack_buffer_time > 0.0 {
+                // if player is attacking, decrement it and keep is_attacking as true
+                self.is_attacking = true;
+                self.attack_buffer_time -= dt;
+            } else {
+                // if player is not attacking, set is_attacking to false
+                self.is_attacking = false;
+            }
+            // ATTACK INPUT DETECTION AND LOGIC DONE
+
+        } else {
+            // if either game is paused or player's movement is blocked, then wait until player is on the ground and then stop moving
+            if self.on_ground {
+                self.vel_x = 0.0;
+                self.vel_y = 0.0;
+            }
+        }
+        //  notes:  on_wall checks seem to either be redundantly done in the WALL JUMP INPUT DETECTION AND LOGIC section or the HORIZONTAL MOVEMENT INPUT DETECTION section
+        //          wall_slide_timer logic seems like it can be put inside of the if blocks that set on_wall accordingly, instead of being in a separate conditional that itself checks on_wall
+        //          if wall_jump_enabled is checked any time on_wall would be set to true, then it seems like it would not need to be checked again in the WALL JUMP INPUT DETECTION AND LOGIC section as well
+
+
+        // KNOCKBACK LOGIC
+        if self.knockback_vel_x != 0.0 {
+            // if player is being knocked back, then apply knockback to horizontal velocity
+            self.vel_x = self.knockback_vel_x;
+        }
+        if self.knockback_vel_y != 0.0 {
+            // if player is being knocked back, then apply knockback to the vertical velocity
+            self.vel_y = self.knockback_vel_y;
+        }
+
+        if self.knockback_vel_x > 0.0 {
+            self.knockback_vel_x = (self.knockback_vel_x - KNOCKBACK_DECAY * dt).max(0.0);
+        } else if self.knockback_vel_x < 0.0 {
+            self.knockback_vel_x = (self.knockback_vel_x + KNOCKBACK_DECAY * dt).min(0.0);
+        }
+        if self.knockback_vel_y > 0.0 {
+            self.knockback_vel_y = (self.knockback_vel_y - KNOCKBACK_DECAY * dt).max(0.0);
+        } else if self.knockback_vel_y < 0.0 {
+            self.knockback_vel_y = (self.knockback_vel_y + KNOCKBACK_DECAY * dt).min(0.0);
+        }
+        // KNOCKBACK LOGIC DONE
+
+
+        // POSITION UPDATES AND COLLISION RESOLUTION
+        let gravity = if self.vel_y < 0.0 {
+            GRAVITY_UP
+        } else if self.vel_y >= 0.0 && !self.on_wall {
+            GRAVITY_DOWN
+        } else {
+            GRAVITY_DOWN / 3.0 * power(self.wall_slide_timer, 3).min(1.0)
+        };
+
+        if self.dash_buffer <= 0.0 || self.on_wall_buffer > 0.0 {
+            self.vel_y += gravity * dt;
+        }
+
+        self.on_ground = false;
+        if self.dash_buffer <= 0.0 {
+            self.y += self.vel_y * dt;
+        }
+        self.resolve_vertical_collisions();
+
+        self.hitting_wall_right = false;
+        self.hitting_wall_left = false;
+        self.x += self.vel_x * dt;
+        self.resolve_horizontal_collisions();
+        // POSITION UPDATES AND COLLISION RESOLUTION DONE
+    }
+
+    pub fn update1(&mut self, width: f32, height: f32, floor_y: f32, dt: f32) {
+        const GRAVITY_UP: f32 = 1050.0;
+        const GRAVITY_DOWN: f32 = 1500.0;
+        const JUMP_FORCE: f32 = -650.0;
+        const JUMP_CUT: f32 = 0.1;
+        const MOVE_SPEED: f32 = 300.0;
+        const SPRINT_SPEED: f32 = 450.0;
+
+        println!("{}", self.on_wall_left());
 
         if self.on_wall {
             self.on_wall_buffer = 0.05;
@@ -202,7 +539,7 @@ impl Player {
             }*/
 
             if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
-                if !self.hitting_wall_right && self.wall_jump_buffer <= 0.0 {
+                if !self.hitting_wall_right && self.wall_jump_buffer <= 0.0 && !self.on_wall_right() {
                     self.on_wall = false;
                     if self.sprinting {
                         self.vel_x = SPRINT_SPEED;
@@ -274,14 +611,16 @@ impl Player {
 
             // wall jumping
 
-            /*if self.hitting_wall_right && !self.on_ground && self.wall_jump_enabled {
+            if self.hitting_wall_right && !self.on_ground && self.wall_jump_enabled {
                 self.on_wall = true;
+                self.on_wall_buffer = 0.05;
                 self.x_direction = XDirection::Left;
             }
             if self.hitting_wall_left && !self.on_ground && self.wall_jump_enabled {
                 self.on_wall = true;
+                self.on_wall_buffer = 0.05;
                 self.x_direction = XDirection::Right;
-            }*/
+            }
 
             if self.on_wall_buffer > 0.0 {
                 self.wall_slide_timer += dt;
@@ -294,6 +633,8 @@ impl Player {
                     self.vel_y = JUMP_FORCE;
                     self.is_jumping = true;
                     self.on_wall = false;
+                    self.on_wall_buffer = 0.0;
+                    self.jump_buffer_time = 0.0;
                     self.wall_jump_buffer = 0.15;
                     /*if self.hitting_wall_right {
                         self.x_direction = XDirection::Left;
@@ -369,7 +710,7 @@ impl Player {
         } else if self.vel_y >= 0.0 && self.on_wall_buffer <= 0.0 {
             GRAVITY_DOWN
         } else {
-            ((GRAVITY_DOWN / 3.0) * self.wall_slide_timer * self.wall_slide_timer).min(GRAVITY_DOWN / 2.0)
+            GRAVITY_DOWN / 3.0 * power(self.wall_slide_timer, 3).min(1.0)
         };
 
         if self.dash_buffer <= 0.0 {
@@ -377,7 +718,7 @@ impl Player {
         } else if self.on_wall_buffer > 0.0 {
             self.vel_y += gravity * dt;
         }
-        
+
         self.on_ground = false;
         if self.dash_buffer <= 0.0 {
             self.y += self.vel_y * dt;
@@ -725,7 +1066,39 @@ impl Player {
         }
     }
 
-    fn wall_jump(&mut self) {
+    fn on_wall_right(&self) -> bool {
+        let top_y = ((self.y - self.pheight * TILE_SIZE) / TILE_SIZE).floor() as i32;
+        let bottom_y = ((self.y - 1.0) / TILE_SIZE).floor() as i32;
+        let middle_y = ((self.y - self.pheight / 2.0 * TILE_SIZE) / TILE_SIZE).floor() as i32;
 
+        if self.on_ground {
+            return false;
+        }
+
+        let right_x = ((self.x + self.pwidth * TILE_SIZE) / TILE_SIZE).floor() as i32;
+
+        return self.current_room.is_solid(right_x, top_y) || self.current_room.is_solid(right_x, bottom_y) || self.current_room.is_solid(right_x, middle_y);
     }
+
+    fn on_wall_left(&self) -> bool {
+        let top_y = ((self.y - self.pheight * TILE_SIZE) / TILE_SIZE).floor() as i32;
+        let bottom_y = ((self.y - 1.0) / TILE_SIZE).floor() as i32;
+        let middle_y = ((self.y - self.pheight / 2.0 * TILE_SIZE) / TILE_SIZE).floor() as i32;
+
+        if self.on_ground {
+            return false;
+        }
+
+        let left_x = ((self.x - self.pwidth * TILE_SIZE) / TILE_SIZE).floor() as i32;
+        
+        return self.current_room.is_solid(left_x, top_y) || self.current_room.is_solid(left_x, bottom_y) || self.current_room.is_solid(left_x, middle_y);
+    }
+}
+
+fn power(base: f32, exponent: i32) -> f32 {
+    let mut x = 1.0;
+    for i in 0..exponent {
+        x *= base;
+    }
+    x
 }
