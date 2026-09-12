@@ -81,6 +81,8 @@ pub struct Player {
     pub on_wall_buffer: f32,
     pub wall_slide_timer: f32,
     pub dash_direction: f32,
+    pub double_jumped: bool,
+    pub is_double_jumping: bool,
 }
 
 impl Player {
@@ -134,6 +136,8 @@ impl Player {
             on_wall_buffer: 0.0,
             wall_slide_timer: 0.0,
             dash_direction: 1.0,
+            double_jumped: false,
+            is_double_jumping: false,
         }
     }
 
@@ -146,8 +150,6 @@ impl Player {
         const SPRINT_SPEED: f32 = 450.0;
         const DASH_SPEED: f32 = 800.0;
         const KNOCKBACK_DECAY: f32 = 400.0;
-
-        println!("{:?}", self.x_direction);
 
         // BUFFER DECREMENTS
         if self.movement_blocked_buffer > 0.0 {
@@ -229,11 +231,25 @@ impl Player {
                     self.is_jumping = true;
                     self.on_ground = false;
                     self.jump_buffer_time = 0.0;
-                } // todo!("add code for the cases that player is not on the ground and dashing, and the player is on the ground and dashing, and not on the ground and not dashing")
+                // todo!("add code for the cases that player is not on the ground and dashing, and the player is on the ground and dashing, and not on the ground and not dashing")
+                } else if !self.on_ground && self.dash_buffer <= 0.0 && self.double_jump_enabled && !self.double_jumped {
+                    self.vel_y = JUMP_FORCE;
+                    self.is_double_jumping = true;
+                    self.double_jumped = true;
+                    self.jump_buffer_time = 0.0;
+                }
             }
             if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
                 // if spacebar is released and player is moving upward, apply jump cut
                 self.vel_y *= JUMP_CUT;
+                self.is_double_jumping = false;
+            } else if self.vel_y > 0.0 {
+                self.is_double_jumping = false;
+            }
+
+            if self.on_ground || self.on_wall {
+                self.double_jumped = false;
+                self.is_double_jumping = false;
             }
             // VERTICAL MOVEMENT INPUT DETECTION DONE
 
@@ -406,7 +422,7 @@ impl Player {
                 self.is_attacking = false;
             }
             // ATTACK INPUT DETECTION AND LOGIC DONE
-
+            
         } else {
             // if either game is paused or player's movement is blocked, then wait until player is on the ground and then stop moving
             if self.on_ground {
@@ -796,13 +812,22 @@ impl Player {
                 Color::from_rgba(0, 0, 255, 80),
             );
         }
-        if self.on_wall_buffer > 0.0 {
+        if self.on_wall {
             draw_rectangle(
                 self.x,
                 self.y - self.pheight as f32 * TILE_SIZE,
                 self.pwidth as f32 * TILE_SIZE,
                 self.pheight as f32 * TILE_SIZE,
                 Color::from_rgba(255, 255, 255, 80),
+            );
+        }
+        if self.is_double_jumping {
+            draw_rectangle(
+                self.x,
+                self.y - self.pheight as f32 * TILE_SIZE,
+                self.pwidth as f32 * TILE_SIZE,
+                self.pheight as f32 * TILE_SIZE,
+                Color::from_rgba(0, 255, 0, 80),
             );
         }
         
