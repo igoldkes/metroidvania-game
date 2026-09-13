@@ -268,8 +268,13 @@ impl Player {
                             self.on_wall = false;
                             -1.0
                         } else {
-                            // if player is facing right and not on a wall, dash rightward; vel_x > 0.0
-                            1.0
+                            if self.wall_jump_buffer > 0.0 {
+                                // if player is not on a wall but currently wall jumping and locked to facing right, dash leftward toward the wall; vel_x < 0.0
+                                -1.0
+                            } else {
+                                // if player is not on a wall and not wall jumping and facing right, then dash rightward; vel_x > 0.0
+                                1.0
+                            }
                         }
                     }
                     XDirection::Left => {
@@ -278,8 +283,13 @@ impl Player {
                             self.on_wall = false;
                             1.0
                         } else {
-                            // if player is facing left and not on a wall, then dash leftward; vel_x < 0.0
-                            -1.0
+                            if self.wall_jump_buffer > 0.0 {
+                                // if player is not on a wall but currently wall jumping and locked to facing left, dash rightward toward the wall; vel_x > 0.0
+                                1.0
+                            } else {
+                                // if player is not on a wall and not wall jumping and facing left, then dash leftward; vel_x >< 0.0
+                                -1.0
+                            }
                         }
                     }
                 };
