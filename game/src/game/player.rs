@@ -121,8 +121,8 @@ impl Player {
             lives: 5,
             attack_x: x + TILE_SIZE,
             attack_y: y - TILE_SIZE - 6.0,
-            attack_width: 40.0,
-            attack_height: 12.0,
+            attack_width: 1.0 * TILE_SIZE,
+            attack_height: 1.25 * TILE_SIZE,
             knockback_vel_x: 0.0,
             knockback_vel_y: 0.0,
             double_jump_enabled: true,
@@ -289,7 +289,9 @@ impl Player {
                 self.dashed = false;
             }
             if self.dash_buffer > 0.0 {
-                // if player is currently dashing, then decrement the dash buffer, set dashed to true, and set horizontal movement speed to dash speed
+                // if player is currently dashing, then decrement the dash buffer, set dashed to true, stop any current attacks, and set horizontal movement speed to dash speed
+                self.is_attacking = false;
+                self.attack_buffer_time = 0.0;
                 self.dash_buffer -= dt;
                 let dash_speed = DASH_SPEED;
                 if self.knockback_vel_x == 0.0 {
@@ -382,8 +384,8 @@ impl Player {
 
 
             // ATTACK INPUT DETECTION AND LOGIC
-            if is_key_pressed(KeyCode::Semicolon) && !self.is_attacking {
-                // if smeicolon is pressed and player is not currently attacking, then perform an attack
+            if is_key_pressed(KeyCode::Semicolon) && !self.is_attacking && self.dash_buffer <= 0.0 {
+                // if smeicolon is pressed and player is not currently attacking or dashing, then perform an attack
                 self.is_attacking = true;
                 self.attack_buffer_time = 0.3;
                 self.attack_direction = match self.y_direction {

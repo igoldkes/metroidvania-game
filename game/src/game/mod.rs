@@ -465,27 +465,27 @@ impl GameState {
             match self.player.attack_direction {
                 AttackDirection::Right => {
                     self.player.attack_x = self.player.x + self.player.pwidth * TILE_SIZE;
-                    self.player.attack_y = self.player.y - self.player.pheight / 2.0 * TILE_SIZE - 6.0;
-                    self.player.attack_width = 40.0;
-                    self.player.attack_height = 12.0;
+                    self.player.attack_y = self.player.y - (1.25 * TILE_SIZE);
+                    self.player.attack_width = 1.0 * TILE_SIZE;
+                    self.player.attack_height = 1.25 * TILE_SIZE;
                 }
                 AttackDirection::Left => {
-                    self.player.attack_x = self.player.x - 40.0;
-                    self.player.attack_y = self.player.y - self.player.pheight / 2.0 * TILE_SIZE - 6.0;
-                    self.player.attack_width = 40.0;
-                    self.player.attack_height = 12.0;
+                    self.player.attack_x = self.player.x - (1.0 * TILE_SIZE);
+                    self.player.attack_y = self.player.y - (1.25 * TILE_SIZE);
+                    self.player.attack_width = 1.0 * TILE_SIZE;
+                    self.player.attack_height = 1.25 * TILE_SIZE;
                 }
                 AttackDirection::Up => {
-                    self.player.attack_x = self.player.x + self.player.pwidth / 2.0 * TILE_SIZE - 6.0;
-                    self.player.attack_y = self.player.y - self.player.pheight * TILE_SIZE - 40.0;
-                    self.player.attack_width = 12.0;
-                    self.player.attack_height = 40.0;
+                    self.player.attack_x = self.player.x;
+                    self.player.attack_y = self.player.y - self.player.pheight * TILE_SIZE - (1.0 * TILE_SIZE);
+                    self.player.attack_width = 1.0 * TILE_SIZE;
+                    self.player.attack_height = 1.0 * TILE_SIZE;
                 }
                 AttackDirection::Down => {
-                    self.player.attack_x = self.player.x + self.player.pwidth / 2.0 * TILE_SIZE - 6.0;
+                    self.player.attack_x = self.player.x;
                     self.player.attack_y = self.player.y;
-                    self.player.attack_width = 12.0;
-                    self.player.attack_height = 40.0;
+                    self.player.attack_width = 1.0 * TILE_SIZE;
+                    self.player.attack_height = 1.0 * TILE_SIZE;
                 }
             }
             self.player.draw();
