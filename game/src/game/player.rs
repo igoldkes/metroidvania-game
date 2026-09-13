@@ -84,6 +84,7 @@ pub struct Player {
     pub double_jumped: bool,
     pub is_double_jumping: bool,
     pub dash_cooldown: f32,
+    pub was_on_ground: bool,
 }
 
 impl Player {
@@ -140,6 +141,7 @@ impl Player {
             double_jumped: false,
             is_double_jumping: false,
             dash_cooldown: 0.0,
+            was_on_ground: true,
         }
     }
 
@@ -152,6 +154,8 @@ impl Player {
         const SPRINT_SPEED: f32 = 450.0;
         const DASH_SPEED: f32 = 800.0;
         const KNOCKBACK_DECAY: f32 = 400.0;
+
+        self.was_on_ground = self.on_ground;
 
         // BUFFER DECREMENTS
         if self.movement_blocked_buffer > 0.0 {
@@ -351,7 +355,7 @@ impl Player {
                 };
                 self.vel_x = direction * MOVE_SPEED;
             }
-            if self.on_wall_right() || self.on_wall_left() && self.wall_jump_enabled {
+            if self.on_wall_right() || self.on_wall_left() && self.wall_jump_enabled && !self.was_on_ground {
                 // if player is not on the ground, can wall jump, and is up against a wall either to the right or the left, then set on_wall to true
                 self.on_wall = true;
                 //println!("1");
@@ -368,7 +372,7 @@ impl Player {
                 self.wall_slide_timer = 0.0;
             }
 
-            if self.wall_jump_enabled && self.on_wall {
+            if self.wall_jump_enabled && self.on_wall && !self.was_on_ground {
                 // if player is on a wall and can wall jump, detect input for wall jumps
                 if is_key_pressed(KeyCode::Space) {
                     // if spacebar is pressed, perform the wall jump
@@ -506,316 +510,6 @@ impl Player {
         self.x += self.vel_x * dt;
         self.resolve_horizontal_collisions();
         // POSITION UPDATES AND COLLISION RESOLUTION DONE
-    }
-
-    pub fn update1(&mut self, width: f32, height: f32, floor_y: f32, dt: f32) {
-        const GRAVITY_UP: f32 = 1050.0;
-        const GRAVITY_DOWN: f32 = 1500.0;
-        const JUMP_FORCE: f32 = -650.0;
-        const JUMP_CUT: f32 = 0.1;
-        const MOVE_SPEED: f32 = 300.0;
-        const SPRINT_SPEED: f32 = 450.0;
-
-        println!("{}", self.on_wall_left());
-
-        if self.on_wall {
-            self.on_wall_buffer = 0.05;
-        } else if self.on_wall_buffer > 0.0 {
-            self.on_wall_buffer -= dt;
-        }
-
-        if self.movement_blocked_buffer > 0.0 {
-            self.movement_blocked_buffer -= dt;
-        }
-
-        if self.damage_blocked_buffer > 0.0 {
-            self.damage_blocked_buffer -= dt;
-        }
-
-        if self.knockback_vel_x > 0.0 {
-            self.knockback_vel_x = (self.knockback_vel_x - 400.0 * dt).max(0.0);
-        } else if self.knockback_vel_x < 0.0 {
-            self.knockback_vel_x = (self.knockback_vel_x + 400.0 * dt).min(0.0);
-        }
-        if self.knockback_vel_y > 0.0 {
-            self.knockback_vel_y = (self.knockback_vel_y - 400.0 * dt).max(0.0);
-        } else if self.knockback_vel_y < 0.0 {
-            self.knockback_vel_y = (self.knockback_vel_y + 400.0 * dt).min(0.0);
-        }
-
-        if !self.paused && self.movement_blocked_buffer <= 0.0 {
-            if is_key_pressed(KeyCode::Right) || is_key_pressed(KeyCode::D) && self.wall_jump_buffer <= 0.0 {
-                self.x_direction = XDirection::Right;
-            }
-            if is_key_pressed(KeyCode::Left) || is_key_pressed(KeyCode::A) && self.wall_jump_buffer <= 0.0 {
-                self.x_direction = XDirection::Left;
-            }
-            if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
-                self.y_direction = YDirection::Up;
-            } else if is_key_down(KeyCode::Down) || is_key_down(KeyCode::S) {
-                self.y_direction = YDirection::Down;
-            } else {
-                self.y_direction = YDirection::None;
-            }
-
-            if self.wall_jump_buffer > 0.0 {
-                self.wall_jump_buffer -= dt;
-                let direction = match self.x_direction {
-                    XDirection::Right => {
-                        1.0
-                    }
-                    XDirection::Left => {
-                        -1.0
-                    }
-                };
-                self.vel_x = direction * MOVE_SPEED;
-            }
-
-            /*if self.on_wall {
-                println!("on wall");
-                if self.wall_jump_buffer > 0.0 {
-                    println!("jumped");
-                }
-            }*/
-
-            if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
-                if !self.hitting_wall_right && self.wall_jump_buffer <= 0.0 && !self.on_wall_right() {
-                    self.on_wall = false;
-                    if self.sprinting {
-                        self.vel_x = SPRINT_SPEED;
-                    } else {
-                        self.vel_x = MOVE_SPEED;
-                    }
-                } else if self.wall_jump_enabled && !self.on_ground {
-                    self.on_wall = true;
-                    //self.vel_x = 0.0;
-                }
-                if self.wall_jump_buffer <= 0.0 {
-                    self.x_direction = XDirection::Right;
-                }
-            } else if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
-                if !self.hitting_wall_left && self.wall_jump_buffer <= 0.0 {
-                    self.on_wall = false;
-                    if self.sprinting {
-                        self.vel_x = -SPRINT_SPEED;
-                    } else {
-                        self.vel_x = -MOVE_SPEED;
-                    }
-                } else if self.wall_jump_enabled && !self.on_ground {
-                    self.on_wall = true;
-                    //self.vel_x = 0.0;
-                }
-                if self.wall_jump_buffer <= 0.0 {
-                    self.x_direction = XDirection::Left;
-                }
-            } else {
-                self.on_wall = false;
-                self.vel_x = 0.0;
-            }
-
-            if is_key_pressed(KeyCode::Space) {
-                self.jump_buffer_time = 0.15;
-            }
-            if self.jump_buffer_time > 0.0 && self.dash_buffer <= 0.0 {
-                self.jump_buffer_time -= dt;
-            }
-            if self.jump_buffer_time > 0.0 && self.on_ground {
-                self.vel_y = JUMP_FORCE;
-                self.is_jumping = true;
-                self.on_ground = false;
-                self.jump_buffer_time = 0.0;
-            }
-            if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
-                self.vel_y *= JUMP_CUT;
-            }
-            
-            // sprinting
-            if is_key_down(KeyCode::LeftShift) {
-                self.sprinting = true;
-            }
-            if is_key_released(KeyCode::LeftShift) {
-                self.sprinting = false;
-            }
-
-            // dashing
-            if self.on_ground || self.on_wall_buffer > 0.0 {
-                self.dashed = false;
-            }
-            if self.dash_buffer > 0.0 {
-                self.dash_buffer -= dt;
-                self.dash();
-            }
-            if is_key_pressed(KeyCode::LeftShift) && self.dash_buffer <= 0.0 && !self.dashed {
-                self.dash_buffer = 0.15;
-            }
-
-            // wall jumping
-
-            if self.hitting_wall_right && !self.on_ground && self.wall_jump_enabled {
-                self.on_wall = true;
-                self.on_wall_buffer = 0.05;
-                self.x_direction = XDirection::Left;
-            }
-            if self.hitting_wall_left && !self.on_ground && self.wall_jump_enabled {
-                self.on_wall = true;
-                self.on_wall_buffer = 0.05;
-                self.x_direction = XDirection::Right;
-            }
-
-            if self.on_wall_buffer > 0.0 {
-                self.wall_slide_timer += dt;
-            } else {
-                self.wall_slide_timer = 0.0;
-            }
-
-            if self.wall_jump_enabled && self.on_wall_buffer > 0.0 {
-                if is_key_pressed(KeyCode::Space) {
-                    self.vel_y = JUMP_FORCE;
-                    self.is_jumping = true;
-                    self.on_wall = false;
-                    self.on_wall_buffer = 0.0;
-                    self.jump_buffer_time = 0.0;
-                    self.wall_jump_buffer = 0.15;
-                    /*if self.hitting_wall_right {
-                        self.x_direction = XDirection::Left;
-                    }
-                    if self.hitting_wall_left {
-                        self.x_direction = XDirection::Right;
-                    }*/
-                    self.x_direction = match self.x_direction {
-                        XDirection::Right => {
-                            XDirection::Left
-                        }
-                        XDirection::Left => {
-                            XDirection::Right
-                        }
-                    }
-                }
-                if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
-                    self.vel_y *= JUMP_CUT;
-                }
-            }
-
-            let mut n = 0;
-            if self.is_attacking {
-                n += 1;
-                println!("{:?}, {:?}, {}", self.x_direction, self.attack_direction, n);
-            }
-
-            // attacking
-            if is_key_pressed(KeyCode::Semicolon) && !self.is_attacking {
-                self.is_attacking = true;
-                self.attack_buffer_time = 0.3;
-                self.attack_direction = match self.y_direction {
-                    YDirection::Up => {
-                        AttackDirection::Up
-                    }
-                    YDirection::Down => {
-                        AttackDirection::Down
-                    }
-                    YDirection::None => {
-                        match self.x_direction {
-                            XDirection::Right => {
-                                AttackDirection::Right
-                            }
-                            XDirection::Left => {
-                                AttackDirection::Left
-                            }
-                        }
-                    }
-                }
-            }
-            if self.attack_buffer_time > 0.0 {
-                self.is_attacking = true;
-                self.attack_buffer_time -= dt;
-            } else {
-                self.is_attacking = false;
-            }
-        } else {
-            if self.on_ground {
-                self.vel_x = 0.0;
-                self.vel_y = 0.0;
-            }
-        }
-
-        if self.knockback_vel_x != 0.0 {
-            self.vel_x = self.knockback_vel_x;
-        }
-        if self.knockback_vel_y != 0.0 {
-            self.vel_y = self.knockback_vel_y;
-        }
-
-        let gravity = if self.vel_y < 0.0 {
-            GRAVITY_UP
-        } else if self.vel_y >= 0.0 && self.on_wall_buffer <= 0.0 {
-            GRAVITY_DOWN
-        } else {
-            GRAVITY_DOWN / 3.0 * power(self.wall_slide_timer, 3).min(1.0)
-        };
-
-        if self.dash_buffer <= 0.0 {
-            self.vel_y += gravity * dt;
-        } else if self.on_wall_buffer > 0.0 {
-            self.vel_y += gravity * dt;
-        }
-
-        self.on_ground = false;
-        if self.dash_buffer <= 0.0 {
-            self.y += self.vel_y * dt;
-        }
-        // resolve vertical collisions
-        self.resolve_vertical_collisions();
-        
-        self.hitting_wall_right = false;
-        self.hitting_wall_left = false;
-        self.x += self.vel_x * dt;
-        // resolve horizontal collisions
-        self.resolve_horizontal_collisions();
-
-        // update and set animations
-        let walking = self.vel_x != 0.0;
-        match self.x_direction {
-            XDirection::Left => {
-                if walking {
-                    // moving left
-                    if self.on_ground {
-                        self.jackie_paper_walking_animation.set_animation(0);
-                        self.jackie_paper_walking_animation.update();
-                    } else if self.vel_y < 0.0 {
-                        // moving up
-                        self.jackie_paper_walking_animation.set_animation(2);
-                        self.jackie_paper_walking_animation.update();
-                    } else if self.vel_y > 0.0 {
-                        // moving down
-                        self.jackie_paper_walking_animation.set_animation(4);
-                        self.jackie_paper_walking_animation.update();
-                    }
-                } else {
-                    // standing still facing left
-
-                }
-            }
-            XDirection::Right => {
-                if walking {
-                    // moving right
-                    if self.on_ground {
-                        self.jackie_paper_walking_animation.set_animation(1);
-                        self.jackie_paper_walking_animation.update();
-                    } else if self.vel_y < 0.0 {
-                        // moving up
-                        self.jackie_paper_walking_animation.set_animation(3);
-                        self.jackie_paper_walking_animation.update();
-                    } else if self.vel_y > 0.0 {
-                        // moving down
-                        self.jackie_paper_walking_animation.set_animation(5);
-                        self.jackie_paper_walking_animation.update();
-                    }
-                } else {
-                    // standing still facing right
-
-                }
-            }
-        }
     }
 
     pub fn draw(&self) {
