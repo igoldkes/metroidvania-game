@@ -354,6 +354,7 @@ impl Player {
             if self.on_wall_right() || self.on_wall_left() && self.wall_jump_enabled {
                 // if player is not on the ground, can wall jump, and is up against a wall either to the right or the left, then set on_wall to true
                 self.on_wall = true;
+                //println!("1");
             } else {
                 // if player either cannot jump or both on_wall_right() and on_wall_left() return false, then set on_wall to false
                 self.on_wall = false;
@@ -1137,7 +1138,7 @@ impl Player {
             return false;
         }
 
-        let left_x = ((self.x - self.pwidth * TILE_SIZE) / TILE_SIZE).floor() as i32;
+        let left_x = ((self.x - 1.0) / TILE_SIZE).floor() as i32;
         
         return self.current_room.is_solid(left_x, top_y) || self.current_room.is_solid(left_x, bottom_y) || self.current_room.is_solid(left_x, middle_y);
     }
