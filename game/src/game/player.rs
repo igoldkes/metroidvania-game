@@ -482,6 +482,9 @@ impl Player {
         self.on_ground = false;
         if self.dash_buffer <= 0.0 {
             self.y += self.vel_y * dt;
+        } else {
+            // falling momentum resets when dash is complete and player resumes falling
+            self.vel_y = 0.0;
         }
         self.resolve_vertical_collisions();
 
