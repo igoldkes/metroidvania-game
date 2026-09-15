@@ -280,8 +280,4 @@ impl Enemy {
             _ => false,
         }
     }
-
-    fn knocked_back(&mut self, attack_direction: AttackDirection) {
-        
-    }
 }

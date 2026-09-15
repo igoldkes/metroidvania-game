@@ -3,12 +3,24 @@ use macroquad::prelude::*;
 use super::super::ui::components::{draw_modal_chrome, draw_wrapped_text, ModalChromeProps};
 use super::super::ui::layout::{centered_clamped_rect, safe_margins, scaled_type, ui_scale};
 use super::super::ui::theme::{TypeScale, UiPreferences};
-use super::super::StartupState;
+use super::super::{StartupState, AudioSettingsState};
 
 #[allow(clippy::too_many_arguments)]
 pub fn draw_startup_overlay(
     startup_state: &StartupState,
     menu_role: usize,
+    dash_enabled: bool,
+    sprint_enabled: bool,
+    wall_jump_enabled: bool,
+    double_jump_enabled: bool,
+    menu_music_settings_toggle: bool,
+    game_music_settings_toggle: bool,
+    ambient_sounds_settings_toggle: bool,
+    footsteps_settings_toggle: bool,
+    menu_clicks_settings_toggle: bool,
+    music_volume: usize,
+    sfx_volume: usize,
+    menu_clicks_volume: usize,
 ) {
     let width = screen_width();
     let height = screen_height();
@@ -24,6 +36,10 @@ pub fn draw_startup_overlay(
     let preferred_height = match startup_state {
         StartupState::Splash => 180.0,
         StartupState::MainMenu => 220.0,
+        StartupState::Settings => 260.0,
+        StartupState::GameSettings => 300.0,
+        StartupState::AudioSettings { .. } => 460.0,
+        StartupState::VideoSettings => 220.0,
         _ => 220.0,
     };
 
@@ -62,6 +78,8 @@ pub fn draw_startup_overlay(
             );
         }
         StartupState::MainMenu => {
+            // Main Menu
+
             draw_text(
                 "Main Menu",
                 x + row_pad_x,
@@ -72,15 +90,26 @@ pub fn draw_startup_overlay(
 
             let row0_y = y + 92.0 * scale;
 
-            let labels: [&str; 2] = [
+            const MAIN_MENU_OPTIONS: usize = 3;
+
+            let labels: [&str; MAIN_MENU_OPTIONS] = [
                 "Play",
+                "Settings",
                 "Exit Game",
             ];
 
-            for i in 0..2 {
+            for i in 0..MAIN_MENU_OPTIONS {
                 let ry = row0_y + i as f32 * row_h;
+
+                // draw selected option highlight box
                 if menu_role == i {
+
                     //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x, ry - 15.0 * scale, row_bg_w, row_h);
+
+                    // highlight box for menu_role 0: top-left: (278, 327), width: 724, height: 38
+                    // highlight box for menu_role 1: top-left: (278, 365), width: 724, height: 38
+                    // highlight box for menu_role 2: top-left: (278, 403), width: 724, height: 38
+
                     draw_rectangle(
                         x + row_pad_x,
                         ry - 15.0 * scale,
@@ -90,7 +119,7 @@ pub fn draw_startup_overlay(
                     );
                 }
                 let label = labels[i];
-                if i != 1 {
+                if i != MAIN_MENU_OPTIONS - 1 {
                     draw_text(
                         label,
                         x + row_pad_x + 10.0 * scale,
@@ -99,6 +128,471 @@ pub fn draw_startup_overlay(
                         palette.text_primary,
                     );
                 } else {
+                    draw_text(
+                        label,
+                        x + row_pad_x + 10.0 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        Color::from_rgba(255, 180, 160, 255),
+                    );
+                }
+            }
+        }
+        StartupState::Settings => {
+            // Settings
+
+            draw_text(
+                "Settings",
+                x + row_pad_x,
+                y + row_h,
+                ty.headline,
+                palette.text_primary,
+            );
+
+            let row0_y = y + 92.0 * scale;
+
+            const SETTINGS_OPTIONS: usize = 4;
+
+            let labels: [&str; SETTINGS_OPTIONS] = [
+                "Game",
+                "Audio",
+                "Video",
+                "Back",
+            ];
+
+            for i in 0..SETTINGS_OPTIONS {
+                let ry = row0_y + i as f32 * row_h;
+
+                // draw selected option highlight box
+                if menu_role == i {
+
+                    //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x, ry - 15.0 * scale, row_bg_w, row_h);
+
+                    // highlight box for menu_role 0: top-left: (278, 307), width: 724, height: 38
+                    // highlight box for menu_role 1: top-left: (278, 345), width: 724, height: 38
+                    // highlight box for menu_role 2: top-left: (278, 383), width: 724, height: 38
+                    // highlight box for menu_role 3: top-left: (278, 421), width: 724, height: 38
+
+                    draw_rectangle(
+                        x + row_pad_x,
+                        ry - 15.0 * scale,
+                        row_bg_w,
+                        row_h,
+                        Color::from_rgba(88, 94, 118, 235),
+                    );
+                }
+
+                let label = labels[i];
+                if i != SETTINGS_OPTIONS - 1 {
+                    // if not the Back option, draw text in primary text color
+                    draw_text(
+                        label,
+                        x + row_pad_x + 10.0 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        palette.text_primary,
+                    );
+                } else {
+                    // if the Back option, draw text in red color
+                    draw_text(
+                        label,
+                        x + row_pad_x + 10.0 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        Color::from_rgba(255, 180, 160, 255),
+                    );
+                }
+            }
+        }
+        StartupState::GameSettings => {
+            draw_text(
+                "Game",
+                x + row_pad_x,
+                y + row_h,
+                ty.headline,
+                palette.text_primary,
+            );
+
+            let row0_y = y + 92.0 * scale;
+
+            const GAME_OPTIONS: usize = 5;
+
+            let labels: [&str; GAME_OPTIONS] = [
+                    "Dash",
+                    "Sprint",
+                    "Wall Jump",
+                    "Double Jump",
+                    "Back",
+            ];
+
+            for i in 0..GAME_OPTIONS {
+                let ry = row0_y + i as f32 * row_h;
+
+                // draw selected option highlight box
+                if menu_role == i {
+
+                    //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x, ry - 15.0 * scale, row_bg_w, row_h);
+
+                    //
+
+                    draw_rectangle(
+                        x + row_pad_x,
+                        ry - 15.0 * scale,
+                        row_bg_w,
+                        row_h,
+                        Color::from_rgba(88, 94, 118, 235),
+                    );
+                }
+
+                let label = labels[i];
+                if i != GAME_OPTIONS - 1 {
+                    // if not the Back option, draw text in primary text color
+                    draw_text(
+                        label,
+                        x + row_pad_x + 10.0 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        palette.text_primary,
+                    );
+                } else {
+                    // if the Back option, draw text in red color
+                    draw_text(
+                        label,
+                        x + row_pad_x + 10.0 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        Color::from_rgba(255, 180, 160, 255),
+                    );
+                }
+            }
+
+            //let row0_y_opt = y + 92.0 * scale;
+            let labels: [&str; GAME_OPTIONS - 1] = [
+                    if dash_enabled { "On" } else { "Off" },
+                    if sprint_enabled { "On" } else { "Off" },
+                    if wall_jump_enabled { "On" } else { "Off" },
+                    if double_jump_enabled { "On" } else { "Off" },
+            ];
+
+            for i in 0..GAME_OPTIONS - 1 {
+                let ry = row0_y + i as f32 * row_h;
+
+                let label = labels[i];
+
+                if label == "On" {
+                    draw_rectangle(
+                        x + row_pad_x + 150.0 * scale,
+                        ry - 11.0 * scale,
+                        40.0 * scale,
+                        row_h - 8.0,
+                        Color::from_rgba(88, 94, 150, 235),
+                    );
+                    draw_text(
+                        label,
+                        x + row_pad_x + 160.0 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        palette.text_primary,
+                        //Color::from_rgba(10, 163, 13, 1),
+                    );
+                } else {
+                    draw_rectangle(
+                        x + row_pad_x + 150.0 * scale,
+                        ry - 11.0 * scale,
+                        40.0 * scale,
+                        row_h - 8.0,
+                        Color::from_rgba(88, 94, 150, 235),
+                    );
+                    draw_text(
+                        label,
+                        x + row_pad_x + 157.5 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        palette.text_primary,
+                        //Color::from_rgba(163, 10, 10, 1),
+                    );
+                }
+            }
+        }
+        StartupState::AudioSettings { audio_settings_state } => {
+            draw_text(
+                "Audio",
+                x + row_pad_x,
+                y + row_h,
+                ty.headline,
+                palette.text_primary,
+            );
+
+            let row0_y = y + 92.0 * scale;
+
+            const AUDIO_OPTIONS: usize = 9;
+
+            let labels: [&str; AUDIO_OPTIONS] = [
+                    "Menu Music",
+                    "Game Music",
+                    "Ambient Sounds",
+                    "Footsteps",
+                    "Menu Clicks",
+                    "Music Volume",
+                    "SFX Volume",
+                    "Menu Clicks Volume",
+                    "Back",
+            ];
+            
+            for i in 0..AUDIO_OPTIONS {
+                let ry = row0_y + i as f32 * row_h;
+
+                // draw selected option highlight box
+                if i == 5 {
+                    if !matches!(audio_settings_state, AudioSettingsState::MusicVolume) {
+                        if menu_role == i {
+                            //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x, ry - 15.0 * scale, 200.0 * scale, row_h);
+                            draw_rectangle(
+                                x + row_pad_x,
+                                ry - 15.0 * scale,
+                                200.0 * scale,
+                                row_h,
+                                Color::from_rgba(88, 94, 118, 235),
+                            );
+                        }
+                    } else {
+                        if menu_role == i {
+                            //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x + 210.0 * scale, ry - 15.0 * scale, row_bg_w - 210.0 * scale, row_h);
+                            draw_rectangle(
+                                x + row_pad_x + 210.0 * scale,
+                                ry - 15.0 * scale,
+                                row_bg_w - 210.0 * scale,
+                                row_h,
+                                Color::from_rgba(88, 94, 118, 235),
+                            );
+                        }
+                    }
+                    //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x + 220.0 * scale, ry + (1.0 * scale), row_bg_w - 236.0 * scale, row_h / (8.0 * scale));
+                    draw_rectangle(
+                        x + row_pad_x + 220.0 * scale,
+                        ry + (1.0 * scale),
+                        row_bg_w - 236.0 * scale, // x + row_pad_x + 210.0 * scale,
+                        row_h / (8.0 * scale),
+                        Color::from_rgba(90, 115, 210, 255),
+                    );
+                    
+                    //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x + 220.0 * scale + (row_bg_w - 236.0 * scale) / 10.0 * music_volume as f32 - music_volume as f32 * scale, ry - (6.0 * scale), 10.0 * scale, row_h / (2.0 * scale));
+                    draw_rectangle(
+                        x + row_pad_x + 220.0 * scale + (row_bg_w - 236.0 * scale) / 10.0 * music_volume as f32 - music_volume as f32 * scale,
+                        ry - (6.0 * scale),
+                        10.0 * scale,
+                        row_h / (2.0 * scale),
+                        Color::from_rgba(145, 150, 180, 255),
+                    );
+                }
+                if i == 6 {
+                    if !matches!(audio_settings_state, AudioSettingsState::SFXVolume) {
+                        if menu_role == i {
+                            draw_rectangle(
+                                x + row_pad_x,
+                                ry - 15.0 * scale,
+                                200.0 * scale,
+                                row_h,
+                                Color::from_rgba(88, 94, 118, 235),
+                            );
+                        }
+                    } else {
+                        if menu_role == i {
+                            draw_rectangle(
+                                x + row_pad_x + 210.0 * scale,
+                                ry - 15.0 * scale,
+                                row_bg_w - 210.0 * scale,
+                                row_h,
+                                Color::from_rgba(88, 94, 118, 235),
+                            );
+                        }
+                    }
+                    draw_rectangle(
+                        x + row_pad_x + 220.0 * scale,
+                        ry + (1.0 * scale),
+                        row_bg_w - 236.0 * scale, // x + row_pad_x + 210.0 * scale,
+                        row_h / (8.0 * scale),
+                        Color::from_rgba(90, 115, 210, 255),
+                    );
+                    draw_rectangle(
+                        x + row_pad_x + 220.0 * scale + (row_bg_w - 236.0 * scale) / 10.0 * sfx_volume as f32 - sfx_volume as f32 * scale,
+                        ry - (6.0 * scale),
+                        10.0 * scale,
+                        row_h / (2.0 * scale),
+                        Color::from_rgba(145, 150, 180, 255),
+                    );
+                }
+                if i == 7 {
+                    if !matches!(audio_settings_state, AudioSettingsState::MenuClicksVolume) {
+                        if menu_role == i {
+                            draw_rectangle(
+                                x + row_pad_x,
+                                ry - 15.0 * scale,
+                                200.0 * scale,
+                                row_h,
+                                Color::from_rgba(88, 94, 118, 235),
+                            );
+                        }
+                    } else {
+                        if menu_role == i {
+                            draw_rectangle(
+                                x + row_pad_x + 210.0 * scale,
+                                ry - 15.0 * scale,
+                                row_bg_w - 210.0 * scale,
+                                row_h,
+                                Color::from_rgba(88, 94, 118, 235),
+                            );
+                        }
+                    }
+                    draw_rectangle(
+                        x + row_pad_x + 220.0 * scale,
+                        ry + (1.0 * scale),
+                        row_bg_w - 236.0 * scale, // x + row_pad_x + 210.0 * scale,
+                        row_h / (8.0 * scale),
+                        Color::from_rgba(90, 115, 210, 255),
+                    );
+                    draw_rectangle(
+                        x + row_pad_x + 220.0 * scale + (row_bg_w - 236.0 * scale) / 10.0 * menu_clicks_volume as f32 - menu_clicks_volume as f32 * scale,
+                        ry - (6.0 * scale),
+                        10.0 * scale,
+                        row_h / (2.0 * scale),
+                        Color::from_rgba(145, 150, 180, 255),
+                    );
+                }
+                if menu_role != 5 && menu_role != 6 && menu_role != 7 {
+                    if menu_role == i {
+                        //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x, ry - 15.0 * scale, row_bg_w, row_h);
+
+                        //
+
+                        draw_rectangle(
+                            x + row_pad_x,
+                            ry - 15.0 * scale,
+                            row_bg_w,
+                            row_h,
+                            Color::from_rgba(88, 94, 118, 235),
+                        );
+                    }
+                }
+                let label = labels[i];
+                if i != AUDIO_OPTIONS - 1 {
+                    // if not the Back option, draw text in primary text color
+                    draw_text(
+                        label,
+                        x + row_pad_x + 10.0 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        palette.text_primary,
+                    );
+                } else {
+                    // if the Back option, draw text in red color
+                    draw_text(
+                        label,
+                        x + row_pad_x + 10.0 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        Color::from_rgba(255, 180, 160, 255),
+                    );
+                }
+            }
+
+            let labels: [&str; AUDIO_OPTIONS - 4] = [
+                    if menu_music_settings_toggle { "On" } else { "Off" },
+                    if game_music_settings_toggle { "On" } else { "Off" },
+                    if ambient_sounds_settings_toggle { "On" } else { "Off" },
+                    if footsteps_settings_toggle { "On" } else { "Off" },
+                    if menu_clicks_settings_toggle { "On" } else { "Off" },
+            ];
+            for i in 0..AUDIO_OPTIONS - 4 {
+                let ry = row0_y + i as f32 * row_h;
+
+                let label = labels[i];
+
+                if label == "On" {
+                    draw_rectangle(
+                        x + row_pad_x + 150.0 * scale,
+                        ry - 11.0 * scale,
+                        40.0 * scale,
+                        row_h - 8.0,
+                        Color::from_rgba(88, 94, 150, 235),
+                    );
+                    draw_text(
+                        label,
+                        x + row_pad_x + 160.0 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        palette.text_primary,
+                        //Color::from_rgba(10, 163, 13, 1),
+                    );
+                } else {
+                    draw_rectangle(
+                        x + row_pad_x + 150.0 * scale,
+                        ry - 11.0 * scale,
+                        40.0 * scale,
+                        row_h - 8.0,
+                        Color::from_rgba(88, 94, 150, 235),
+                    );
+                    draw_text(
+                        label,
+                        x + row_pad_x + 157.5 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        palette.text_primary,
+                        //Color::from_rgba(163, 10, 10, 1),
+                    );
+                }
+            }
+        }
+        StartupState::VideoSettings => {
+            draw_text(
+                "Video",
+                x + row_pad_x,
+                y + row_h,
+                ty.headline,
+                palette.text_primary,
+            );
+
+            let row0_y = y + 92.0 * scale;
+
+            const VIDEO_OPTIONS: usize = 3;
+
+            let labels: [&str; VIDEO_OPTIONS] = [
+                    "Resolution",
+                    "Brightness",
+                    "Back",
+            ];
+
+            for i in 0..VIDEO_OPTIONS {
+                let ry = row0_y + i as f32 * row_h;
+
+                // draw selected option highlight box
+                if menu_role == i {
+
+                    //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x, ry - 15.0 * scale, row_bg_w, row_h);
+
+                    //
+
+                    draw_rectangle(
+                        x + row_pad_x,
+                        ry - 15.0 * scale,
+                        row_bg_w,
+                        row_h,
+                        Color::from_rgba(88, 94, 118, 235),
+                    );
+                }
+
+                let label = labels[i];
+                if i != VIDEO_OPTIONS - 1 {
+                    // if not the Back option, draw text in primary text color
+                    draw_text(
+                        label,
+                        x + row_pad_x + 10.0 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        palette.text_primary,
+                    );
+                } else {
+                    // if the Back option, draw text in red color
                     draw_text(
                         label,
                         x + row_pad_x + 10.0 * scale,
