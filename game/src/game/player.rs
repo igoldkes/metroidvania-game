@@ -145,7 +145,22 @@ impl Player {
         }
     }
 
-    pub fn update(&mut self, width: f32, height: f32, floor_y: f32, dt: f32) {
+    pub fn update(
+        &mut self,
+        width: f32,
+        height: f32,
+        floor_y: f32, dt: f32,
+        move_left_kb: KeyCode,
+        move_right_kb: KeyCode,
+        look_up_kb: KeyCode,
+        look_down_kb: KeyCode,
+        jump_kb: KeyCode,
+        dash_sprint_kb: KeyCode,
+        melee_attack_kb: KeyCode,
+        ranged_attack_kb: KeyCode,
+        interact_kb: KeyCode,
+        inventory_kb: KeyCode,
+    ) {
         const GRAVITY_UP: f32 = 1050.0;
         const GRAVITY_DOWN: f32 = 1500.0;
         const JUMP_FORCE: f32 = -650.0;
@@ -171,18 +186,18 @@ impl Player {
             // if game is not paused and player can move, then run the corresponding logic
 
             // INITIAL DIRECTION SET
-            if is_key_pressed(KeyCode::D) && self.wall_jump_buffer <= 0.0 {
+            if is_key_pressed(move_right_kb) && self.wall_jump_buffer <= 0.0 {
                 // if D is pressed and x_direction is not briefly locked because player just jumped off of a wall, player is facing right
                 self.x_direction = XDirection::Right;
             }
-            if is_key_pressed(KeyCode::A) && self.wall_jump_buffer <= 0.0 {
+            if is_key_pressed(move_left_kb) && self.wall_jump_buffer <= 0.0 {
                 // if A is pressed and x_direction is not briefly locked because player just jumped off of a wall, player is facing left
                 self.x_direction = XDirection::Left;
             }
-            if is_key_down(KeyCode::W) {
+            if is_key_down(look_up_kb) {
                 // if W is being held down, player is looking up
                 self.y_direction = YDirection::Up;
-            } else if is_key_down(KeyCode::S) {
+            } else if is_key_down(look_down_kb) {
                 // if W is not being held down, and S is, player is looking down
                 self.y_direction = YDirection::Down;
             } else {
@@ -193,7 +208,7 @@ impl Player {
 
 
             // HORIZONTAL MOVEMENT INPUT DETECTION
-            if is_key_down(KeyCode::D) {
+            if is_key_down(move_right_kb) {
                 if !self.hitting_wall_right && self.wall_jump_buffer <= 0.0 {
                     // self.on_wall = false;
                     if self.sprinting {
@@ -205,7 +220,7 @@ impl Player {
                 if self.wall_jump_buffer <= 0.0 {
                     self.x_direction = XDirection::Right;
                 }
-            } else if is_key_down(KeyCode::A) {
+            } else if is_key_down(move_left_kb) {
                 if !self.hitting_wall_left && self.wall_jump_buffer <= 0.0 {
                     // self.on_wall = false;
                     if self.sprinting {
@@ -225,7 +240,7 @@ impl Player {
 
 
             // VERTICAL MOVEMENT INPUT DETECTION
-            if is_key_pressed(KeyCode::Space) {
+            if is_key_pressed(jump_kb) {
                 // jump-queuing: if spacebar is pressed, count down a timer from 0.15s
                 self.jump_buffer_time = 0.15;
             }
@@ -245,7 +260,7 @@ impl Player {
                     self.jump_buffer_time = 0.0;
                 }
             }
-            if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
+            if is_key_released(jump_kb) && self.vel_y < 0.0 {
                 // if spacebar is released and player is moving upward, apply jump cut
                 self.vel_y *= JUMP_CUT;
                 self.is_double_jumping = false;
@@ -261,7 +276,7 @@ impl Player {
 
 
             // DASH INPUT DETECTION
-            if is_key_pressed(KeyCode::LeftShift) && self.dash_buffer <= 0.0 && !self.dashed && self.dash_cooldown <= 0.0 {
+            if is_key_pressed(dash_sprint_kb) && self.dash_buffer <= 0.0 && !self.dashed && self.dash_cooldown <= 0.0 {
                 // if left shift is pressed and player is not currently dashing and player has not already dashed, then dash for 0.15s
                 self.dash_buffer = 0.15;
                 self.dash_cooldown = 0.65;
@@ -333,7 +348,7 @@ impl Player {
 
 
             // SPRINT INPUT DETECTION
-            if is_key_down(KeyCode::LeftShift) && self.sprint_enabled {
+            if is_key_down(dash_sprint_kb) && self.sprint_enabled {
                 // if left shift is being held down, and can sprint, then set sprinting to true
                 self.sprinting = true;
             } else {
@@ -374,7 +389,7 @@ impl Player {
 
             if self.wall_jump_enabled && self.on_wall && !self.was_on_ground {
                 // if player is on a wall and can wall jump, detect input for wall jumps
-                if is_key_pressed(KeyCode::Space) {
+                if is_key_pressed(jump_kb) {
                     // if spacebar is pressed, perform the wall jump
                     self.vel_y = JUMP_FORCE;
                     self.is_jumping = true;
@@ -390,7 +405,7 @@ impl Player {
                         }
                     };
                 }
-                if is_key_released(KeyCode::Space) && self.vel_y < 0.0 {
+                if is_key_released(jump_kb) && self.vel_y < 0.0 {
                     // if spacebar is released and player is moving upward, apply jump cut
                     self.vel_y *= JUMP_CUT;
                 }
@@ -399,7 +414,7 @@ impl Player {
 
 
             // ATTACK INPUT DETECTION AND LOGIC
-            if is_key_pressed(KeyCode::Semicolon) && !self.is_attacking && self.dash_buffer <= 0.0 {
+            if is_key_pressed(melee_attack_kb) && !self.is_attacking && self.dash_buffer <= 0.0 {
                 // if smeicolon is pressed and player is not currently attacking or dashing, then perform an attack
                 self.is_attacking = true;
                 self.attack_buffer_time = 0.3;

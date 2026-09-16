@@ -35,6 +35,8 @@ enum StartupState {
     AudioSettings { audio_settings_state: AudioSettingsState },
     // video settings page
     VideoSettings,
+    // controls settings page
+    ControlsSettings,
     Done,
 }
 
@@ -50,6 +52,21 @@ enum AudioSettingsState {
 enum PauseMenuState {
     None,
     Menu { pause_menu_role: usize },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Keybind {
+    None,
+    MoveLeft,
+    MoveRight,
+    LookUp,
+    LookDown,
+    Jump,
+    DashSprint,
+    MeleeAttack,
+    RangedAttack,
+    Interact,
+    Inventory,
 }
 
 #[derive(Clone, Debug)]
@@ -220,7 +237,21 @@ pub struct GameState {
     sfx_volume: usize,
     menu_clicks_volume: usize,
     potential_volume_lvl: usize,
-
+    controls_settings_row: usize,
+    controls_settings_col: usize,
+    move_left_kb: KeyCode,
+    move_right_kb: KeyCode,
+    look_up_kb: KeyCode,
+    look_down_kb: KeyCode,
+    jump_kb: KeyCode,
+    dash_sprint_kb: KeyCode,
+    melee_attack_kb: KeyCode,
+    ranged_attack_kb: KeyCode,
+    interact_kb: KeyCode,
+    inventory_kb: KeyCode,
+    kb_vec: Vec<KeyCode>,
+    awaiting_kb_input: bool,
+    kb_to_change: Keybind,
 }
 
 impl GameState {
@@ -299,6 +330,19 @@ impl GameState {
 
         let menu_click_sound = load_sound("assets/audio_assets/menu_click_sound.wav").await.unwrap();
 
+        let kb_vec = vec![
+            KeyCode::A, // move_left_kb
+            KeyCode::D, // move_right_kb
+            KeyCode::W, // look_up_kb
+            KeyCode::S, // look_down_kb
+            KeyCode::Space, // jump_kb
+            KeyCode::LeftShift, // dash_sprint_kb
+            KeyCode::Semicolon, // melee_attack_kb
+            KeyCode::Apostrophe, // ranged_attack_kb
+            KeyCode::E, // interact_kb
+            KeyCode::T, // inventory_kb
+        ];
+
         Self {
             startup_state: StartupState::Splash,
             pause_menu_state: PauseMenuState::None,
@@ -335,10 +379,27 @@ impl GameState {
             sfx_volume: 10,
             menu_clicks_volume: 10,
             potential_volume_lvl: 0,
+            controls_settings_row: 0,
+            controls_settings_col: 0,
+            move_left_kb: KeyCode::A,
+            move_right_kb: KeyCode::D,
+            look_up_kb: KeyCode::W,
+            look_down_kb: KeyCode::S,
+            jump_kb: KeyCode::Space,
+            dash_sprint_kb: KeyCode::LeftShift,
+            melee_attack_kb: KeyCode::Semicolon,
+            ranged_attack_kb: KeyCode::Apostrophe,
+            interact_kb: KeyCode::E,
+            inventory_kb: KeyCode::T,
+            kb_vec,
+            awaiting_kb_input: false,
+            kb_to_change: Keybind::None,
         }
     }
 
     pub fn update(&mut self, dt: f32) {
+        //println!("{:?}", KeyCode::LeftShift);
+
         // screen size checks
         self.width = screen_width();
         self.height = screen_height();
@@ -357,7 +418,7 @@ impl GameState {
         // STORYPHASE::PLAYING
         if matches!(self.story, StoryPhase::Playing) {
             // update player
-            self.player.update(self.width, self.height, self.floor_y, dt);
+            self.player.update(self.width, self.height, self.floor_y, dt, self.move_left_kb, self.move_right_kb, self.look_up_kb, self.look_down_kb, self.jump_kb, self.dash_sprint_kb, self.melee_attack_kb, self.ranged_attack_kb, self.interact_kb, self.inventory_kb);
 
             // enemy interactions
             if self.current_room.enemies.len() > 0 {
@@ -365,6 +426,9 @@ impl GameState {
                 let mut enemies = std::mem::take(&mut self.current_room.enemies);
 
                 for enemy in &mut enemies {
+                    // update enemy
+                    enemy.update(dt, self.current_room.tile_map.clone(), self.current_room.width, self.current_room.height);
+
                     // for each enemy in the current room's vector of enemies...
                     if enemy.alive {
                         // if enemy is alive, check interactions
@@ -405,17 +469,22 @@ impl GameState {
                                 enemy.health -= 10.0;
                                 enemy.being_hit = true;
 
-                                // apply knockback to enemy
+                                // apply knockback to enemy and recoil knockback to player
                                 let knockback_speed = 300.0;
                                 let knockback_y = -150.0;
+                                let recoil_knockback_speed = 125.0;
                                 match self.player.attack_direction {
                                     AttackDirection::Right => {
                                         enemy.knockback_vel_x = knockback_speed;
                                         enemy.knockback_vel_y = knockback_y;
+
+                                        self.player.knockback_vel_x = -recoil_knockback_speed;
                                     }
                                     AttackDirection::Left => {
                                         enemy.knockback_vel_x = -knockback_speed;
                                         enemy.knockback_vel_y = knockback_y;
+
+                                        self.player.knockback_vel_x = recoil_knockback_speed;
                                     }
                                     AttackDirection::Up => {
                                         enemy.knockback_vel_x = 0.0;
@@ -493,6 +562,19 @@ impl GameState {
                 self.music_volume,
                 self.sfx_volume,
                 self.menu_clicks_volume,
+                self.controls_settings_row,
+                self.controls_settings_col,
+                self.move_left_kb,
+                self.move_right_kb,
+                self.look_up_kb,
+                self.look_down_kb,
+                self.jump_kb,
+                self.dash_sprint_kb,
+                self.melee_attack_kb,
+                self.ranged_attack_kb,
+                self.interact_kb,
+                self.inventory_kb,
+                self.awaiting_kb_input,
             );
             return;
         }
@@ -607,7 +689,7 @@ impl GameState {
             }
                 
 
-            if is_key_pressed(KeyCode::W) | is_key_pressed(KeyCode::Up) {
+            if is_key_pressed(self.look_up_kb) {
                 if self.menu_clicks_settings_toggle {
                     play_sound_once(&self.menu_click_sound);
                     set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -619,7 +701,7 @@ impl GameState {
                 }
             }
 
-            if is_key_pressed(KeyCode::S) | is_key_pressed(KeyCode::Down) {
+            if is_key_pressed(self.look_down_kb) {
                 if self.menu_clicks_settings_toggle {
                     play_sound_once(&self.menu_click_sound);
                     set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -631,7 +713,7 @@ impl GameState {
                 }
             }
 
-            if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
+            if is_key_pressed(KeyCode::Enter) {
                 if self.menu_clicks_settings_toggle {
                     play_sound_once(&self.menu_click_sound);
                     set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -698,7 +780,7 @@ impl GameState {
                 // main menu navigation with mouse done
                 
                 // main menu navigation with keyboard
-                if is_key_pressed(KeyCode::W) {
+                if is_key_pressed(self.look_up_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -709,7 +791,7 @@ impl GameState {
                         self.startup_menu_role -= 1;
                     }
                 }
-                if is_key_pressed(KeyCode::S) {
+                if is_key_pressed(self.look_down_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -767,41 +849,44 @@ impl GameState {
                     // check mouse's x position
                     if mouse_pos.0 > 278.0 && mouse_pos.0 < 1002.0 {
                         // if mouse's x position is between 278.0 and 1002.0, then it is in the width of the menu options, so check its y position
-                        if mouse_pos.1 > 307.0 && mouse_pos.1 < 345.0 {
-                            // if mouse's y position is between 327.0 and 365.0, then it is on menu option 0; menu_role = 0
+                        if mouse_pos.1 > 287.0 && mouse_pos.1 < 325.0 {
+                            // if mouse's y position is between 287.0 and 325.0, then it is on menu option 0; menu_role = 0
                             self.startup_menu_role = 0;
-                        } else if mouse_pos.1 > 345.0 && mouse_pos.1 < 383.0 {
-                            // if mouse's y position is between 365.0 and 403.0, then it is on menu option 1; menu_role = 1
+                        } else if mouse_pos.1 > 325.0 && mouse_pos.1 < 363.0 {
+                            // if mouse's y position is between 325.0 and 363.0, then it is on menu option 1; menu_role = 1
                             self.startup_menu_role = 1;
-                        } else if mouse_pos.1 > 383.0 && mouse_pos.1 < 421.0 {
-                            // if mouse's y position is between 403.0 and 441.0, then it is on menu option 2; menu_role = 2
+                        } else if mouse_pos.1 > 363.0 && mouse_pos.1 < 401.0 {
+                            // if mouse's y position is between 363.0 and 401.0, then it is on menu option 2; menu_role = 2
                             self.startup_menu_role = 2;
-                        } else if mouse_pos.1 > 421.0 && mouse_pos.1 < 459.0 {
-                            // if mouse's y position is between 403.0 and 441.0, then it is on menu option 3; menu_role = 3
+                        } else if mouse_pos.1 > 401.0 && mouse_pos.1 < 439.0 {
+                            // if mouse's y position is between 401.0 and 439.0, then it is on menu option 3; menu_role = 3
                             self.startup_menu_role = 3;
+                        } else if mouse_pos.1 > 439.0 && mouse_pos.1 < 477.0 {
+                            // if mouse's y position is between 439.0 and 477.0, then it is on menu option 4; menu_role = 4
+                            self.startup_menu_role = 4;
                         }
                     }
                 }
                 // settings navigation with mouse done
 
                 // settings navigation with keyboard
-                if is_key_pressed(KeyCode::W) {
+                if is_key_pressed(self.look_up_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
                     }
                     if self.startup_menu_role == 0 {
-                        self.startup_menu_role = 3;
+                        self.startup_menu_role = 4;
                     } else {
                         self.startup_menu_role -= 1;
                     }
                 }
-                if is_key_pressed(KeyCode::S) {
+                if is_key_pressed(self.look_down_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
                     }
-                    if self.startup_menu_role == 3 {
+                    if self.startup_menu_role == 4 {
                         self.startup_menu_role = 0;
                     } else {
                         self.startup_menu_role += 1;
@@ -840,6 +925,11 @@ impl GameState {
                             self.startup_state = StartupState::VideoSettings;
                         }
                         3 => {
+                            // Controls
+                            self.startup_menu_role = 0;
+                            self.startup_state = StartupState::ControlsSettings;
+                        }
+                        4 => {
                             // Back
                             self.startup_menu_role = 1;
                             self.startup_state = StartupState::MainMenu;
@@ -860,16 +950,16 @@ impl GameState {
                     if mouse_pos.0 > 278.0 && mouse_pos.0 < 1002.0 {
                         // if mouse's x position is between 278.0 and 1002.0, then it is in the width of the menu options, so check its y position
                         if mouse_pos.1 > 287.0 && mouse_pos.1 < 325.0 {
-                            // if mouse's y position is between 327.0 and 365.0, then it is on menu option 0; menu_role = 0
+                            // if mouse's y position is between 287.0 and 325.0, then it is on menu option 0; menu_role = 0
                             self.startup_menu_role = 0;
                         } else if mouse_pos.1 > 325.0 && mouse_pos.1 < 363.0 {
-                            // if mouse's y position is between 365.0 and 403.0, then it is on menu option 1; menu_role = 1
+                            // if mouse's y position is between 325.0 and 363.0, then it is on menu option 1; menu_role = 1
                             self.startup_menu_role = 1;
                         } else if mouse_pos.1 > 363.0 && mouse_pos.1 < 401.0 {
-                            // if mouse's y position is between 403.0 and 441.0, then it is on menu option 2; menu_role = 2
+                            // if mouse's y position is between 363.0 and 401.0, then it is on menu option 2; menu_role = 2
                             self.startup_menu_role = 2;
                         } else if mouse_pos.1 > 401.0 && mouse_pos.1 < 439.0 {
-                            // if mouse's y position is between 403.0 and 441.0, then it is on menu option 3; menu_role = 3
+                            // if mouse's y position is between 401.0 and 439.0, then it is on menu option 3; menu_role = 3
                             self.startup_menu_role = 3;
                         } else if mouse_pos.1 > 439.0 && mouse_pos.1 < 477.0 {
                             // if mouse's y position is between 439.0 and 477.0, then it is on menu option 4; menu_role = 4
@@ -880,7 +970,7 @@ impl GameState {
                 // game settings navigation with mouse done
 
                 // game settings navigation with keyboard
-                if is_key_pressed(KeyCode::W) {
+                if is_key_pressed(self.look_up_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -891,7 +981,7 @@ impl GameState {
                         self.startup_menu_role -= 1;
                     }
                 }
-                if is_key_pressed(KeyCode::S) {
+                if is_key_pressed(self.look_down_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -995,7 +1085,7 @@ impl GameState {
                 // audio settings navigation with mouse done
 
                 // audio settings navigation with keyboard
-                if is_key_pressed(KeyCode::W) {
+                if is_key_pressed(self.look_up_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -1006,7 +1096,7 @@ impl GameState {
                         self.startup_menu_role -= 1;
                     }
                 }
-                if is_key_pressed(KeyCode::S) {
+                if is_key_pressed(self.look_down_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -1136,7 +1226,7 @@ impl GameState {
                 // audio settings music volume navigation with mouse done
 
                 // audio settings music volume navigation with keyboard
-                if is_key_pressed(KeyCode::D) {
+                if is_key_pressed(self.move_right_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -1147,7 +1237,7 @@ impl GameState {
                         //set_sound_volume(&self.game_music, self.music_volume as f32 / 10.0);
                     }
                 }
-                if is_key_pressed(KeyCode::A) {
+                if is_key_pressed(self.move_left_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -1234,7 +1324,7 @@ impl GameState {
                 // audio settings sfx volume navigation with mouse done
 
                 // audio settings sfx volume navigation with keyboard
-                if is_key_pressed(KeyCode::D) {
+                if is_key_pressed(self.move_right_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -1245,7 +1335,7 @@ impl GameState {
                         //set_sound_volume(&self.footsteps, self.sfx_volume as f32 / 10.0);
                     }
                 }
-                if is_key_pressed(KeyCode::A) {
+                if is_key_pressed(self.move_left_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -1332,7 +1422,7 @@ impl GameState {
                 // audio settings menu clicks volume navigation with mouse done
 
                 // audio settings menu clicks volume navigation with keyboard
-                if is_key_pressed(KeyCode::D) {
+                if is_key_pressed(self.move_right_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -1342,7 +1432,7 @@ impl GameState {
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
                     }
                 }
-                if is_key_pressed(KeyCode::A) {
+                if is_key_pressed(self.move_left_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -1393,7 +1483,7 @@ impl GameState {
                 // video settings navigation with mouse done
 
                 // video settings navigation with keyboard
-                if is_key_pressed(KeyCode::W) {
+                if is_key_pressed(self.look_up_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -1404,7 +1494,7 @@ impl GameState {
                         self.startup_menu_role -= 1;
                     }
                 }
-                if is_key_pressed(KeyCode::S) {
+                if is_key_pressed(self.look_down_kb) {
                     if self.menu_clicks_settings_toggle {
                         play_sound_once(&self.menu_click_sound);
                         set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
@@ -1447,6 +1537,204 @@ impl GameState {
                     }
                 }
                 // video settings options handling done
+            }
+            StartupState::ControlsSettings => {
+                if !self.awaiting_kb_input {
+                    // controls settings mouse navigation
+                    if self.mouse_moved_buffer > 0.0 {
+                        let mouse_pos = mouse_position();
+                        let mouse_x = mouse_pos.0;
+                        let mouse_y = mouse_pos.1;
+
+                        // check mouse's x position
+                        if mouse_pos.0 > 278.0 && mouse_pos.0 < 640.0 {
+                            // if mouse's x position is between 278.0 and 640.0, then it is in the width of the first column, so check its y position
+                            self.controls_settings_col = 0;
+                        } else if mouse_pos.0 >= 640.0 && mouse_pos.0 < 1002.0 {
+                            // if mouse's x position is between 640.0 and 1002.0, then it is in the width of the second column, so check its y position
+                            self.controls_settings_col = 1;
+                        }
+
+                        // check mouse's y position
+                        if mouse_pos.0 > 278.0 && mouse_pos.0 < 1002.0 {
+                            if mouse_pos.1 > 267.0 && mouse_pos.1 < 305.0 {
+                                // if mouse's y position is between 267.0 and 305.0, then it is on menu option 0; menu_role = 0
+                                self.controls_settings_row = 0;
+                            } else if mouse_pos.1 > 305.0 && mouse_pos.1 < 343.0 {
+                                // if mouse's y position is between 305.0 and 343.0, then it is on menu option 1; menu_role = 1
+                                self.controls_settings_row = 1;
+                            } else if mouse_pos.1 > 343.0 && mouse_pos.1 < 381.0 {
+                                // if mouse's y position is between 343.0 and 381.0, then it is on menu option 2; menu_role = 2
+                                self.controls_settings_row = 2;
+                            } else if mouse_pos.1 > 381.0 && mouse_pos.1 < 419.0 {
+                                // if mouse's y position is between 381.0 and 419.0, then it is on menu option 2; menu_role = 3
+                                self.controls_settings_row = 3;
+                            } else if mouse_pos.1 > 419.0 && mouse_pos.1 < 457.0 {
+                                // if mouse's y position is between 419.0 and 457.0, then it is on menu option 2; menu_role = 4
+                                self.controls_settings_row = 4;
+                            } else if mouse_pos.1 > 457.0 && mouse_pos.1 < 495.0 {
+                                // if mouse's y position is between 457.0 and 495.0, then it is on menu option 2; menu_role = 4
+                                self.controls_settings_row = 5;
+                            }
+                        }
+                    }
+                    // controls settings mouse navigation done
+
+                    // controls settings keyboard navigation
+                    if is_key_pressed(self.look_up_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.controls_settings_row == 0 {
+                            self.controls_settings_row = 5;
+                        } else {
+                            self.controls_settings_row -= 1;
+                        }
+                    }
+                    if is_key_pressed(self.look_down_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.controls_settings_row == 5 {
+                            self.controls_settings_row = 0;
+                        } else {
+                            self.controls_settings_row += 1;
+                        }
+                    }
+                    if self.controls_settings_row != 5 {
+                        if is_key_pressed(self.move_right_kb) {
+                            if self.menu_clicks_settings_toggle {
+                                play_sound_once(&self.menu_click_sound);
+                                set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                            }
+                            if self.controls_settings_col == 1 {
+                                self.controls_settings_col = 0;
+                            } else {
+                                self.controls_settings_col += 1;
+                            }
+                        }
+                        if is_key_pressed(self.move_left_kb) {
+                            if self.menu_clicks_settings_toggle {
+                                play_sound_once(&self.menu_click_sound);
+                                set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                            }
+                            if self.controls_settings_col == 0 {
+                                self.controls_settings_col = 1;
+                            } else {
+                                self.controls_settings_col -= 1;
+                            }
+                        }
+                    }
+                    if is_key_pressed(KeyCode::Escape) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        self.startup_menu_role = 3;
+                        self.startup_state = StartupState::Settings;
+                        self.controls_settings_row = 0;
+                        self.controls_settings_col = 0;
+                    }
+                    // controls settings keyboard navigation done
+
+                    // controls settings option handling
+                    if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.controls_settings_col == 0 {
+                            // in first column
+                            match self.controls_settings_row {
+                                0 => {
+                                    // Move Left
+                                    self.awaiting_kb_input = true;
+                                    self.kb_to_change = Keybind::MoveLeft;
+                                }
+                                1 => {
+                                    // Move Right
+                                    self.awaiting_kb_input = true;
+                                    self.kb_to_change = Keybind::MoveRight;
+                                }
+                                2 => {
+                                    // Look Up
+                                    self.awaiting_kb_input = true;
+                                    self.kb_to_change = Keybind::LookUp;
+                                }
+                                3 => {
+                                    // Look Down
+                                    self.awaiting_kb_input = true;
+                                    self.kb_to_change = Keybind::LookDown;
+                                }
+                                4 => {
+                                    // Jump
+                                    self.awaiting_kb_input = true;
+                                    self.kb_to_change = Keybind::Jump;
+                                }
+                                5 => {
+                                    // Back
+                                    self.startup_menu_role = 3;
+                                    self.startup_state = StartupState::Settings;
+                                    self.controls_settings_row = 0;
+                                    self.controls_settings_col = 0;
+                                    self.kb_to_change = Keybind::None;
+                                }
+                                _ => {}
+                            }
+                        } else {
+                            // in second column
+                            match self.controls_settings_row {
+                                0 => {
+                                    // Dash/Sprint
+                                    self.awaiting_kb_input = true;
+                                    self.kb_to_change = Keybind::DashSprint;
+                                }
+                                1 => {
+                                    // Melee Attack
+                                    self.awaiting_kb_input = true;
+                                    self.kb_to_change = Keybind::MeleeAttack;
+                                }
+                                2 => {
+                                    // Ranged Attack
+                                    self.awaiting_kb_input = true;
+                                    self.kb_to_change = Keybind::RangedAttack;
+                                }
+                                3 => {
+                                    // Interact
+                                    self.awaiting_kb_input = true;
+                                    self.kb_to_change = Keybind::Interact;
+                                }
+                                4 => {
+                                    // Inventory
+                                    self.awaiting_kb_input = true;
+                                    self.kb_to_change = Keybind::Inventory;
+                                }
+                                5 => {
+                                    // Back
+                                    self.startup_menu_role = 3;
+                                    self.startup_state = StartupState::Settings;
+                                    self.controls_settings_row = 0;
+                                    self.controls_settings_col = 0;
+                                    self.kb_to_change = Keybind::None;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                } else {
+                    if is_key_pressed(KeyCode::Escape) || is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        self.awaiting_kb_input = false;
+                    }
+
+                    self.change_keybind(self.kb_to_change.clone());
+                }
+                // controls settings option handling done
             }
             _ => {}
         }
@@ -1552,6 +1840,49 @@ impl GameState {
             self.player.attack_y + self.player.attack_height > enemy.y - enemy.eheight * TILE_SIZE
         };
         colliding
+    }
+
+    fn change_keybind(&mut self, keybind: Keybind) {
+        if get_last_key_pressed().is_none() {
+            return;
+        }
+        if let Some(key) = get_last_key_pressed() {
+            self.awaiting_kb_input = false;
+            // todo!("if desired new key is already bound to another keybind, then swap their keys");
+            match keybind {
+                Keybind::MoveLeft => {
+                    self.move_left_kb = key;
+                }
+                Keybind::MoveRight => {
+                    self.move_right_kb = key;
+                }
+                Keybind::LookUp => {
+                    self.look_up_kb = key;
+                }
+                Keybind::LookDown => {
+                    self.look_down_kb = key;
+                }
+                Keybind::Jump => {
+                    self.jump_kb = key;
+                }
+                Keybind::DashSprint => {
+                    self.dash_sprint_kb = key;
+                }
+                Keybind::MeleeAttack => {
+                    self.melee_attack_kb = key;
+                }
+                Keybind::RangedAttack => {
+                    self.ranged_attack_kb = key;
+                }
+                Keybind::Interact => {
+                    self.interact_kb = key;
+                }
+                Keybind::Inventory => {
+                    self.inventory_kb = key;
+                }
+                Keybind::None => {}
+            }
+        }
     }
 }
 
