@@ -249,7 +249,7 @@ pub struct GameState {
     ranged_attack_kb: KeyCode,
     interact_kb: KeyCode,
     inventory_kb: KeyCode,
-    kb_vec: Vec<KeyCode>,
+    kb_map: HashMap<KeyCode, Keybind>,
     awaiting_kb_input: bool,
     kb_to_change: Keybind,
 }
@@ -330,18 +330,17 @@ impl GameState {
 
         let menu_click_sound = load_sound("assets/audio_assets/menu_click_sound.wav").await.unwrap();
 
-        let kb_vec = vec![
-            KeyCode::A, // move_left_kb
-            KeyCode::D, // move_right_kb
-            KeyCode::W, // look_up_kb
-            KeyCode::S, // look_down_kb
-            KeyCode::Space, // jump_kb
-            KeyCode::LeftShift, // dash_sprint_kb
-            KeyCode::Semicolon, // melee_attack_kb
-            KeyCode::Apostrophe, // ranged_attack_kb
-            KeyCode::E, // interact_kb
-            KeyCode::T, // inventory_kb
-        ];
+        let mut kb_map: HashMap<KeyCode, Keybind> = HashMap::new();
+        kb_map.insert(KeyCode::A, Keybind::MoveLeft);
+        kb_map.insert(KeyCode::D, Keybind::MoveRight);
+        kb_map.insert(KeyCode::W, Keybind::LookUp);
+        kb_map.insert(KeyCode::S, Keybind::LookDown);
+        kb_map.insert(KeyCode::Space, Keybind::Jump);
+        kb_map.insert(KeyCode::LeftShift, Keybind::DashSprint);
+        kb_map.insert(KeyCode::Semicolon, Keybind::MeleeAttack);
+        kb_map.insert(KeyCode::Apostrophe, Keybind::RangedAttack);
+        kb_map.insert(KeyCode::E, Keybind::Interact);
+        kb_map.insert(KeyCode::T, Keybind::Inventory);
 
         Self {
             startup_state: StartupState::Splash,
@@ -391,7 +390,7 @@ impl GameState {
             ranged_attack_kb: KeyCode::Apostrophe,
             interact_kb: KeyCode::E,
             inventory_kb: KeyCode::T,
-            kb_vec,
+            kb_map,
             awaiting_kb_input: false,
             kb_to_change: Keybind::None,
         }
@@ -1849,39 +1848,149 @@ impl GameState {
         if let Some(key) = get_last_key_pressed() {
             self.awaiting_kb_input = false;
             // todo!("if desired new key is already bound to another keybind, then swap their keys");
+            let temp_key;
             match keybind {
                 Keybind::MoveLeft => {
+                    temp_key = self.move_left_kb;
                     self.move_left_kb = key;
+                    if self.kb_map.contains_key(&key) {
+                        self.swap_keybinds(key, temp_key);
+                    }
                 }
                 Keybind::MoveRight => {
+                    temp_key = self.move_right_kb;
                     self.move_right_kb = key;
+                    if self.kb_map.contains_key(&key) {
+                        self.swap_keybinds(key, temp_key);
+                    }
                 }
                 Keybind::LookUp => {
+                    temp_key = self.look_up_kb;
                     self.look_up_kb = key;
+                    if self.kb_map.contains_key(&key) {
+                        self.swap_keybinds(key, temp_key);
+                    }
                 }
                 Keybind::LookDown => {
+                    temp_key = self.look_down_kb;
                     self.look_down_kb = key;
+                    if self.kb_map.contains_key(&key) {
+                        self.swap_keybinds(key, temp_key);
+                    }
                 }
                 Keybind::Jump => {
+                    temp_key = self.jump_kb;
                     self.jump_kb = key;
+                    if self.kb_map.contains_key(&key) {
+                        self.swap_keybinds(key, temp_key);
+                    }
                 }
                 Keybind::DashSprint => {
+                    temp_key = self.dash_sprint_kb;
                     self.dash_sprint_kb = key;
+                    if self.kb_map.contains_key(&key) {
+                        self.swap_keybinds(key, temp_key);
+                    }
                 }
                 Keybind::MeleeAttack => {
+                    temp_key = self.melee_attack_kb;
                     self.melee_attack_kb = key;
+                    if self.kb_map.contains_key(&key) {
+                        self.swap_keybinds(key, temp_key);
+                    }
                 }
                 Keybind::RangedAttack => {
+                    temp_key = self.ranged_attack_kb;
                     self.ranged_attack_kb = key;
+                    if self.kb_map.contains_key(&key) {
+                        self.swap_keybinds(key, temp_key);
+                    }
                 }
                 Keybind::Interact => {
+                    temp_key = self.interact_kb;
                     self.interact_kb = key;
+                    if self.kb_map.contains_key(&key) {
+                        self.swap_keybinds(key, temp_key);
+                    }
                 }
                 Keybind::Inventory => {
+                    temp_key = self.inventory_kb;
                     self.inventory_kb = key;
+                    if self.kb_map.contains_key(&key) {
+                        self.swap_keybinds(key, temp_key);
+                    }
                 }
-                Keybind::None => {}
+                Keybind::None => {
+                    return;
+                }
             }
+        }
+    }
+
+    fn swap_keybinds(&mut self, key: KeyCode, temp_key: KeyCode) {
+        let old_kb = self.kb_map.remove(&key).unwrap();
+        match old_kb {
+            Keybind::MoveLeft => {
+                self.move_left_kb = temp_key;
+                self.kb_map.remove(&temp_key);
+                self.kb_map.insert(temp_key, old_kb);
+                self.kb_map.insert(key, Keybind::MoveLeft);
+            }
+            Keybind::MoveRight => {
+                self.move_right_kb = temp_key;
+                self.kb_map.remove(&temp_key);
+                self.kb_map.insert(temp_key, old_kb);
+                self.kb_map.insert(key, Keybind::MoveRight);
+            }
+            Keybind::LookUp => {
+                self.look_up_kb = temp_key;
+                self.kb_map.remove(&temp_key);
+                self.kb_map.insert(temp_key, old_kb);
+                self.kb_map.insert(key, Keybind::LookUp);
+            }
+            Keybind::LookDown => {
+                self.look_down_kb = temp_key;
+                self.kb_map.remove(&temp_key);
+                self.kb_map.insert(temp_key, old_kb);
+                self.kb_map.insert(key, Keybind::LookDown);
+            }
+            Keybind::Jump => {
+                self.jump_kb = temp_key;
+                self.kb_map.remove(&temp_key);
+                self.kb_map.insert(temp_key, old_kb);
+                self.kb_map.insert(key, Keybind::Jump);
+            }
+            Keybind::DashSprint => {
+                self.dash_sprint_kb = temp_key;
+                self.kb_map.remove(&temp_key);
+                self.kb_map.insert(temp_key, old_kb);
+                self.kb_map.insert(key, Keybind::DashSprint);
+            }
+            Keybind::MeleeAttack => {
+                self.melee_attack_kb = temp_key;
+                self.kb_map.remove(&temp_key);
+                self.kb_map.insert(temp_key, old_kb);
+                self.kb_map.insert(key, Keybind::MeleeAttack);
+            }
+            Keybind::RangedAttack => {
+                self.ranged_attack_kb = temp_key;
+                self.kb_map.remove(&temp_key);
+                self.kb_map.insert(temp_key, old_kb);
+                self.kb_map.insert(key, Keybind::RangedAttack);
+            }
+            Keybind::Interact => {
+                self.interact_kb = temp_key;
+                self.kb_map.remove(&temp_key);
+                self.kb_map.insert(temp_key, old_kb);
+                self.kb_map.insert(key, Keybind::Interact);
+            }
+            Keybind::Inventory => {
+                self.inventory_kb = temp_key;
+                self.kb_map.remove(&temp_key);
+                self.kb_map.insert(temp_key, old_kb);
+                self.kb_map.insert(key, Keybind::Inventory);
+            }
+            Keybind::None => {}
         }
     }
 }
