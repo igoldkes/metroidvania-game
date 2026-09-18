@@ -1731,7 +1731,7 @@ impl GameState {
                         self.awaiting_kb_input = false;
                     }
 
-                    self.change_keybind(self.kb_to_change.clone());
+                    self.change_keybind();
                 }
                 // controls settings option handling done
             }
@@ -1841,84 +1841,111 @@ impl GameState {
         colliding
     }
 
-    fn change_keybind(&mut self, keybind: Keybind) {
+    fn change_keybind(&mut self) {
         if get_last_key_pressed().is_none() {
+            println!("no key pressed");
             return;
         }
         if let Some(key) = get_last_key_pressed() {
             self.awaiting_kb_input = false;
-            // todo!("if desired new key is already bound to another keybind, then swap their keys");
-            let temp_key;
-            match keybind {
+            if matches!(key, KeyCode::Enter) || matches!(key, KeyCode::Escape) {
+                return;
+            }
+            let mut old_kb = Keybind::None;
+            if self.kb_map.contains_key(&key) {
+                old_kb = self.kb_map.get(&key).unwrap().clone();
+            }
+            let old_key;
+            match self.kb_to_change {
                 Keybind::MoveLeft => {
-                    temp_key = self.move_left_kb;
+                    old_key = self.move_left_kb;
                     self.move_left_kb = key;
                     if self.kb_map.contains_key(&key) {
-                        self.swap_keybinds(key, temp_key);
+                        self.swap_keybinds(key, old_key, old_kb.clone());
                     }
+                    self.kb_map.remove(&old_key);
+                    self.kb_map.insert(old_key, old_kb);
                 }
                 Keybind::MoveRight => {
-                    temp_key = self.move_right_kb;
+                    old_key = self.move_right_kb;
                     self.move_right_kb = key;
                     if self.kb_map.contains_key(&key) {
-                        self.swap_keybinds(key, temp_key);
+                        self.swap_keybinds(key, old_key, old_kb.clone());
                     }
+                    self.kb_map.remove(&old_key);
+                    self.kb_map.insert(old_key, old_kb);
                 }
                 Keybind::LookUp => {
-                    temp_key = self.look_up_kb;
+                    old_key = self.look_up_kb;
                     self.look_up_kb = key;
                     if self.kb_map.contains_key(&key) {
-                        self.swap_keybinds(key, temp_key);
+                        self.swap_keybinds(key, old_key, old_kb.clone());
                     }
+                    self.kb_map.remove(&old_key);
+                    self.kb_map.insert(old_key, old_kb);
                 }
                 Keybind::LookDown => {
-                    temp_key = self.look_down_kb;
+                    old_key = self.look_down_kb;
                     self.look_down_kb = key;
                     if self.kb_map.contains_key(&key) {
-                        self.swap_keybinds(key, temp_key);
+                        self.swap_keybinds(key, old_key, old_kb.clone());
                     }
+                    self.kb_map.remove(&old_key);
+                    self.kb_map.insert(old_key, old_kb);
                 }
                 Keybind::Jump => {
-                    temp_key = self.jump_kb;
+                    old_key = self.jump_kb;
                     self.jump_kb = key;
                     if self.kb_map.contains_key(&key) {
-                        self.swap_keybinds(key, temp_key);
+                        self.swap_keybinds(key, old_key, old_kb.clone());
                     }
+                    self.kb_map.remove(&old_key);
+                    self.kb_map.insert(old_key, old_kb);
                 }
                 Keybind::DashSprint => {
-                    temp_key = self.dash_sprint_kb;
+                    old_key = self.dash_sprint_kb;
                     self.dash_sprint_kb = key;
                     if self.kb_map.contains_key(&key) {
-                        self.swap_keybinds(key, temp_key);
+                        self.swap_keybinds(key, old_key, old_kb.clone());
                     }
+                    self.kb_map.remove(&old_key);
+                    self.kb_map.insert(old_key, old_kb);
                 }
                 Keybind::MeleeAttack => {
-                    temp_key = self.melee_attack_kb;
+                    old_key = self.melee_attack_kb;
                     self.melee_attack_kb = key;
                     if self.kb_map.contains_key(&key) {
-                        self.swap_keybinds(key, temp_key);
+                        self.swap_keybinds(key, old_key, old_kb.clone());
                     }
+                    self.kb_map.remove(&old_key);
+                    self.kb_map.insert(old_key, old_kb);
                 }
                 Keybind::RangedAttack => {
-                    temp_key = self.ranged_attack_kb;
+                    old_key = self.ranged_attack_kb;
                     self.ranged_attack_kb = key;
                     if self.kb_map.contains_key(&key) {
-                        self.swap_keybinds(key, temp_key);
+                        self.swap_keybinds(key, old_key, old_kb.clone());
                     }
+                    self.kb_map.remove(&old_key);
+                    self.kb_map.insert(old_key, old_kb);
                 }
                 Keybind::Interact => {
-                    temp_key = self.interact_kb;
+                    old_key = self.interact_kb;
                     self.interact_kb = key;
                     if self.kb_map.contains_key(&key) {
-                        self.swap_keybinds(key, temp_key);
+                        self.swap_keybinds(key, old_key, old_kb.clone());
                     }
+                    self.kb_map.remove(&old_key);
+                    self.kb_map.insert(old_key, old_kb);
                 }
                 Keybind::Inventory => {
-                    temp_key = self.inventory_kb;
+                    old_key = self.inventory_kb;
                     self.inventory_kb = key;
                     if self.kb_map.contains_key(&key) {
-                        self.swap_keybinds(key, temp_key);
+                        self.swap_keybinds(key, old_key, old_kb.clone());
                     }
+                    self.kb_map.remove(&old_key);
+                    self.kb_map.insert(old_key, old_kb);
                 }
                 Keybind::None => {
                     return;
@@ -1927,67 +1954,66 @@ impl GameState {
         }
     }
 
-    fn swap_keybinds(&mut self, key: KeyCode, temp_key: KeyCode) {
-        let old_kb = self.kb_map.remove(&key).unwrap();
+    fn swap_keybinds(&mut self, key: KeyCode, old_key: KeyCode, old_kb: Keybind) {
         match old_kb {
             Keybind::MoveLeft => {
-                self.move_left_kb = temp_key;
-                self.kb_map.remove(&temp_key);
-                self.kb_map.insert(temp_key, old_kb);
+                self.move_left_kb = old_key;
+                //self.kb_map.remove(&old_key);
+                //self.kb_map.insert(old_key, old_kb);
                 self.kb_map.insert(key, Keybind::MoveLeft);
             }
             Keybind::MoveRight => {
-                self.move_right_kb = temp_key;
-                self.kb_map.remove(&temp_key);
-                self.kb_map.insert(temp_key, old_kb);
+                self.move_right_kb = old_key;
+                //self.kb_map.remove(&old_key);
+                //self.kb_map.insert(old_key, old_kb);
                 self.kb_map.insert(key, Keybind::MoveRight);
             }
             Keybind::LookUp => {
-                self.look_up_kb = temp_key;
-                self.kb_map.remove(&temp_key);
-                self.kb_map.insert(temp_key, old_kb);
+                self.look_up_kb = old_key;
+                //self.kb_map.remove(&old_key);
+                //self.kb_map.insert(old_key, old_kb);
                 self.kb_map.insert(key, Keybind::LookUp);
             }
             Keybind::LookDown => {
-                self.look_down_kb = temp_key;
-                self.kb_map.remove(&temp_key);
-                self.kb_map.insert(temp_key, old_kb);
+                self.look_down_kb = old_key;
+                //self.kb_map.remove(&old_key);
+                //self.kb_map.insert(old_key, old_kb);
                 self.kb_map.insert(key, Keybind::LookDown);
             }
             Keybind::Jump => {
-                self.jump_kb = temp_key;
-                self.kb_map.remove(&temp_key);
-                self.kb_map.insert(temp_key, old_kb);
+                self.jump_kb = old_key;
+                //self.kb_map.remove(&old_key);
+                //self.kb_map.insert(old_key, old_kb);
                 self.kb_map.insert(key, Keybind::Jump);
             }
             Keybind::DashSprint => {
-                self.dash_sprint_kb = temp_key;
-                self.kb_map.remove(&temp_key);
-                self.kb_map.insert(temp_key, old_kb);
-                self.kb_map.insert(key, Keybind::DashSprint);
+                self.dash_sprint_kb = old_key;
+                //self.kb_map.remove(&old_key);
+                //self.kb_map.insert(old_key, old_kb);
+                self.kb_map.insert(key, self.kb_to_change.clone());
             }
             Keybind::MeleeAttack => {
-                self.melee_attack_kb = temp_key;
-                self.kb_map.remove(&temp_key);
-                self.kb_map.insert(temp_key, old_kb);
+                self.melee_attack_kb = old_key;
+                //self.kb_map.remove(&old_key);
+                //self.kb_map.insert(old_key, old_kb);
                 self.kb_map.insert(key, Keybind::MeleeAttack);
             }
             Keybind::RangedAttack => {
-                self.ranged_attack_kb = temp_key;
-                self.kb_map.remove(&temp_key);
-                self.kb_map.insert(temp_key, old_kb);
+                self.ranged_attack_kb = old_key;
+                //self.kb_map.remove(&old_key);
+                //self.kb_map.insert(old_key, old_kb);
                 self.kb_map.insert(key, Keybind::RangedAttack);
             }
             Keybind::Interact => {
-                self.interact_kb = temp_key;
-                self.kb_map.remove(&temp_key);
-                self.kb_map.insert(temp_key, old_kb);
+                self.interact_kb = old_key;
+                //self.kb_map.remove(&old_key);
+                //self.kb_map.insert(old_key, old_kb);
                 self.kb_map.insert(key, Keybind::Interact);
             }
             Keybind::Inventory => {
-                self.inventory_kb = temp_key;
-                self.kb_map.remove(&temp_key);
-                self.kb_map.insert(temp_key, old_kb);
+                self.inventory_kb = old_key;
+                //self.kb_map.remove(&old_key);
+                //self.kb_map.insert(old_key, old_kb);
                 self.kb_map.insert(key, Keybind::Inventory);
             }
             Keybind::None => {}

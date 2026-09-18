@@ -775,7 +775,7 @@ pub fn draw_startup_overlay(
                                 palette.text_primary,
                             );
                             draw_text(
-                                &format!("-{}", col_2_selected_kb_label),
+                                &format!("-{}-", col_2_selected_kb_label),
                                 x + row_pad_x + 10.0 * scale + row_bg_w / 2.0 + 200.0 * scale,
                                 ry + 8.0 * scale,
                                 ty.body,
