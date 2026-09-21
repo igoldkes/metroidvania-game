@@ -48,10 +48,40 @@ enum AudioSettingsState {
     MenuClicksVolume,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+/*#[derive(Clone, Debug, PartialEq, Eq)]
 enum PauseMenuState {
     None,
     Menu { pause_menu_role: usize },
+    Settings { pause_settings_menu_role: usize },
+    AudioSettings {
+        audio_settings_state: AudioSettingsState,
+        pause_settings_menu_role: usize,
+        menu_music_settings_toggle: bool,
+        game_music_settings_toggle: bool,
+        ambient_sounds_settings_toggle: bool,
+        footsteps_settings_toggle: bool,
+        menu_clicks_settings_toggle: bool,
+        music_volume: usize,
+        sfx_volume: usize,
+        menu_clicks_volume: usize,
+    },
+    GameSettings { pause_settings_menu_role: usize },
+    VideoSettings { pause_settings_menu_role: usize },
+    ControlsSettings {
+        pause_settings_menu_role: usize,
+        todo!(),
+    },
+}*/
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum PauseMenuState {
+    None,
+    Menu,
+    Settings,
+    AudioSettings { audio_settings_state: AudioSettingsState },
+    GameSettings,
+    VideoSettings,
+    ControlsSettings,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -210,6 +240,8 @@ pub struct GameState {
     floor_y: f32,
     startup_menu_role: usize,
     pause_menu_role: usize,
+    pause_menu_controls_settings_row: usize,
+    pause_menu_controls_settings_col: usize,
     story: StoryPhase,
     paused: bool,
     player_lives: usize,
@@ -353,6 +385,8 @@ impl GameState {
             floor_y,
             startup_menu_role: 0,
             pause_menu_role: 0,
+            pause_menu_controls_settings_row: 0,
+            pause_menu_controls_settings_col: 0,
             story: StoryPhase::new_game(),
             paused: false,
             player_lives: 5,
@@ -397,6 +431,7 @@ impl GameState {
     }
 
     pub fn update(&mut self, dt: f32) {
+        //println!("{:?}, {}", self.pause_menu_state, self.paused);
         //println!("{:?}", KeyCode::LeftShift);
 
         // screen size checks
@@ -518,17 +553,60 @@ impl GameState {
             }
             // player health updates done
 
-            // in-game menu
+            // in-game menu escape checks
             if is_key_pressed(KeyCode::Escape) {
                 if self.menu_clicks_settings_toggle {
                     play_sound_once(&self.menu_click_sound);
                     set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
                 }
-                self.paused = !self.paused;
-                self.player.paused = self.paused;
-                self.pause_menu_state = PauseMenuState::Menu { pause_menu_role: self.pause_menu_role };
+                match self.pause_menu_state {
+                    PauseMenuState::None => {
+                        self.paused = true;
+                        self.player.paused = self.paused;
+                        self.pause_menu_role = 0;
+                        self.pause_menu_state = PauseMenuState::Menu;
+                    }
+                    PauseMenuState::Menu => {
+                        self.pause_menu_role = 0;
+                        self.paused = false;
+                        self.player.paused = self.paused;
+                        self.pause_menu_state = PauseMenuState::None;
+                    }
+                    PauseMenuState::Settings => {
+                        self.pause_menu_role = 1;
+                        self.pause_menu_state = PauseMenuState::Menu;
+                    }
+                    PauseMenuState::GameSettings => {
+                        self.pause_menu_role = 0;
+                        self.pause_menu_state = PauseMenuState::Settings;
+                    }
+                    PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard } => {
+                        self.pause_menu_role = 1;
+                        self.pause_menu_state = PauseMenuState::Settings;
+                    }
+                    PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::MusicVolume } => {
+                        self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                    }
+                    PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::SFXVolume } => {
+                        self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                    }
+                    PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::MenuClicksVolume } => {
+                        self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                    }
+                    PauseMenuState::VideoSettings => {
+                        self.pause_menu_role = 2;
+                        self.pause_menu_state = PauseMenuState::Settings;
+                    }
+                    PauseMenuState::ControlsSettings => {
+                        self.pause_menu_role = 3;
+                        self.pause_menu_state = PauseMenuState::Settings;
+                        self.pause_menu_controls_settings_row = 0;
+                        self.pause_menu_controls_settings_row = 0;
+                        self.kb_to_change = Keybind::None;
+                    }
+                }
             }
-            // in-game menu done
+            // in-game menu escape checks done
         }
         // STORYPHASE::PLAYING DONE
 
@@ -545,6 +623,1125 @@ impl GameState {
     }
 
     pub fn draw(&mut self) {
+        if !matches!(self.startup_state, StartupState::Done) {
+            draw_startup_overlay(
+                &self.startup_state,
+                self.startup_menu_role,
+                self.player.dash_enabled,
+                self.player.sprint_enabled,
+                self.player.wall_jump_enabled,
+                self.player.double_jump_enabled,
+                self.menu_music_settings_toggle,
+                self.game_music_settings_toggle,
+                self.ambient_sounds_settings_toggle,
+                self.footsteps_settings_toggle,
+                self.menu_clicks_settings_toggle,
+                self.music_volume,
+                self.sfx_volume,
+                self.menu_clicks_volume,
+                self.controls_settings_row,
+                self.controls_settings_col,
+                self.move_left_kb,
+                self.move_right_kb,
+                self.look_up_kb,
+                self.look_down_kb,
+                self.jump_kb,
+                self.dash_sprint_kb,
+                self.melee_attack_kb,
+                self.ranged_attack_kb,
+                self.interact_kb,
+                self.inventory_kb,
+                self.awaiting_kb_input,
+            );
+            return;
+        }
+
+        if matches!(self.story, StoryPhase::Playing) {
+            clear_background(BLACK);
+
+            let target = vec2(
+                self.player.x + TILE_SIZE * self.player.pwidth / 2.0,
+                self.player.y - TILE_SIZE * self.player.pheight / 2.0 - 100.0,
+            );
+
+            self.cam.target.x = self.cam.target.x.lerp(target.x, 0.1);
+            self.cam.target.y = self.cam.target.y.lerp(target.y, 0.1);
+
+            set_camera(&self.cam);
+
+            if self.show_background {
+                draw_texture_ex(
+                    &self.background_texture,
+                    0.0,
+                    0.0,
+                    WHITE,
+                    DrawTextureParams {
+                        dest_size: Some(vec2(self.current_room.width as f32 * TILE_SIZE, self.current_room.height as f32 * TILE_SIZE)),
+                        ..Default::default()
+                    },
+                );
+            }
+
+            // update attack hitbox position
+            match self.player.attack_direction {
+                AttackDirection::Right => {
+                    self.player.attack_x = self.player.x + self.player.pwidth * TILE_SIZE;
+                    self.player.attack_y = self.player.y - (1.25 * TILE_SIZE);
+                    self.player.attack_width = 1.0 * TILE_SIZE;
+                    self.player.attack_height = 1.25 * TILE_SIZE;
+                }
+                AttackDirection::Left => {
+                    self.player.attack_x = self.player.x - (1.0 * TILE_SIZE);
+                    self.player.attack_y = self.player.y - (1.25 * TILE_SIZE);
+                    self.player.attack_width = 1.0 * TILE_SIZE;
+                    self.player.attack_height = 1.25 * TILE_SIZE;
+                }
+                AttackDirection::Up => {
+                    self.player.attack_x = self.player.x;
+                    self.player.attack_y = self.player.y - self.player.pheight * TILE_SIZE - (1.0 * TILE_SIZE);
+                    self.player.attack_width = 1.0 * TILE_SIZE;
+                    self.player.attack_height = 1.0 * TILE_SIZE;
+                }
+                AttackDirection::Down => {
+                    self.player.attack_x = self.player.x;
+                    self.player.attack_y = self.player.y;
+                    self.player.attack_width = 1.0 * TILE_SIZE;
+                    self.player.attack_height = 1.0 * TILE_SIZE;
+                }
+            }
+            self.player.draw();
+
+            for enemy in &self.current_room.enemies {
+                enemy.draw();
+            }
+
+            self.draw_tiles();
+
+            set_default_camera();
+
+            self.draw_player_lives();
+        }
+
+        if self.paused {
+            draw_pause_menu_overlay(
+                self.pause_menu_state.clone(),
+                self.pause_menu_role,
+                self.pause_menu_controls_settings_row,
+                self.pause_menu_controls_settings_col,
+                self.player.dash_enabled,
+                self.player.sprint_enabled,
+                self.player.wall_jump_enabled,
+                self.player.double_jump_enabled,
+                self.menu_music_settings_toggle,
+                self.game_music_settings_toggle,
+                self.ambient_sounds_settings_toggle,
+                self.footsteps_settings_toggle,
+                self.menu_clicks_settings_toggle,
+                self.music_volume,
+                self.sfx_volume,
+                self.menu_clicks_volume,
+                self.move_left_kb,
+                self.move_right_kb,
+                self.look_up_kb,
+                self.look_down_kb,
+                self.jump_kb,
+                self.dash_sprint_kb,
+                self.melee_attack_kb,
+                self.ranged_attack_kb,
+                self.interact_kb,
+                self.inventory_kb,
+                self.awaiting_kb_input,
+            );
+            match self.pause_menu_state {
+                PauseMenuState::Menu => {
+                    // mouse navigation
+                    if self.mouse_moved_buffer > 0.0 {
+                        let mouse_pos = mouse_position();
+                        if mouse_pos.0 > 338.0 && mouse_pos.0 < 942.0 {
+                            if mouse_pos.1 > 307.0 && mouse_pos.1 < 345.0 {
+                                self.pause_menu_role = 0;
+                            } else if mouse_pos.1 > 345.0 && mouse_pos.1 < 383.0 {
+                                self.pause_menu_role = 1;
+                            } else if mouse_pos.1 > 383.0 && mouse_pos.1 < 421.0 {
+                                self.pause_menu_role = 2;
+                            } else if mouse_pos.1 > 421.0 && mouse_pos.1 < 459.0 {
+                                self.pause_menu_role = 3;
+                            }
+                        }
+                    }
+                    // mouse navigation done
+
+                    // keyboard navigation
+                    if is_key_pressed(self.look_up_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.pause_menu_role == 0 {
+                            self.pause_menu_role = 3;
+                        } else {
+                            self.pause_menu_role -= 1;
+                        }
+                    }
+                    if is_key_pressed(self.look_down_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.pause_menu_role == 3 {
+                            self.pause_menu_role = 0;
+                        } else {
+                            self.pause_menu_role += 1;
+                        }
+                    }
+                    /*if is_key_pressed(KeyCode::Escape) {
+                        self.pause_menu_role = 0;
+                        self.paused = false;
+                        self.player.paused = self.paused;
+                    }*/
+                    // keyboard navigation done
+
+                    // options handling
+                    if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        match self.pause_menu_role {
+                            0 => {
+                                // Resume
+                                self.paused = false;
+                                self.player.paused = self.paused;
+                                self.pause_menu_state = PauseMenuState::None;
+                            }
+                            1 => {
+                                // Settings
+                                self.pause_menu_state = PauseMenuState::Settings;
+                                self.pause_menu_role = 0;
+                            }
+                            2 => {
+                                // Main Menu
+                                self.startup_state = StartupState::MainMenu;
+                                self.paused = false;
+                                self.player.paused = self.paused;
+                                self.pause_menu_state = PauseMenuState::None;
+                                self.pause_menu_role = 0;
+                                self.startup_menu_role = 0;
+                            }
+                            3 => {
+                                // Exit to Desktop
+                                std::process::exit(0);
+                            }
+                            _ => {}
+                        }
+                    }
+                    // options handling done
+                }
+                PauseMenuState::Settings => {
+                    // mouse navigation
+                    if self.mouse_moved_buffer > 0.0 {
+                        let mouse_pos = mouse_position();
+                        let mouse_x = mouse_pos.0;
+                        let mouse_y = mouse_pos.1;
+
+                        // check mouse's x position
+                        if mouse_pos.0 > 278.0 && mouse_pos.0 < 1002.0 {
+                            // if mouse's x position is between 278.0 and 1002.0, then it is in the width of the menu options, so check its y position
+                            if mouse_pos.1 > 287.0 && mouse_pos.1 < 325.0 {
+                                // if mouse's y position is between 287.0 and 325.0, then it is on menu option 0; menu_role = 0
+                                self.pause_menu_role = 0;
+                            } else if mouse_pos.1 > 325.0 && mouse_pos.1 < 363.0 {
+                                // if mouse's y position is between 325.0 and 363.0, then it is on menu option 1; menu_role = 1
+                                self.pause_menu_role = 1;
+                            } else if mouse_pos.1 > 363.0 && mouse_pos.1 < 401.0 {
+                                // if mouse's y position is between 363.0 and 401.0, then it is on menu option 2; menu_role = 2
+                                self.pause_menu_role = 2;
+                            } else if mouse_pos.1 > 401.0 && mouse_pos.1 < 439.0 {
+                                // if mouse's y position is between 401.0 and 439.0, then it is on menu option 3; menu_role = 3
+                                self.pause_menu_role = 3;
+                            } else if mouse_pos.1 > 439.0 && mouse_pos.1 < 477.0 {
+                                // if mouse's y position is between 439.0 and 477.0, then it is on menu option 4; menu_role = 4
+                                self.pause_menu_role = 4;
+                            }
+                        }
+                    }
+                    // mouse navigation done
+
+                    // keyboard navigation
+                    if is_key_pressed(self.look_up_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.pause_menu_role == 0 {
+                            self.pause_menu_role = 4;
+                        } else {
+                            self.pause_menu_role -= 1;
+                        }
+                    }
+                    if is_key_pressed(self.look_down_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.pause_menu_role == 4 {
+                            self.pause_menu_role = 0;
+                        } else {
+                            self.pause_menu_role += 1;
+                        }
+                    }
+                    /*if is_key_pressed(KeyCode::Escape) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        self.pause_menu_role = 1;
+                        self.pause_menu_state = PauseMenuState::Menu;
+                    }*/
+                    // keyboard navigation done
+
+                    // options handling
+                    if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        match self.pause_menu_role {
+                            0 => {
+                                // Game Settings
+                                self.pause_menu_role = 0;
+                                self.pause_menu_state = PauseMenuState::GameSettings;
+                            }
+                            1 => {
+                                // Audio Settings
+                                self.pause_menu_role = 0;
+                                self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                            }
+                            2 => {
+                                // Video Settings
+                                self.pause_menu_role = 0;
+                                self.pause_menu_state = PauseMenuState::VideoSettings;
+                            }
+                            3 => {
+                                // Controls Settings
+                                self.pause_menu_state = PauseMenuState::ControlsSettings;
+                            }
+                            4 => {
+                                // Back
+                                self.pause_menu_role = 1;
+                                self.pause_menu_state = PauseMenuState::Menu;
+                            }
+                            _ => {}
+                        }
+                    }
+                    // options handling done
+                }
+                PauseMenuState::GameSettings => {
+                    // mouse navigation
+                    if self.mouse_moved_buffer > 0.0 {
+                        let mouse_pos = mouse_position();
+                        let mouse_x = mouse_pos.0;
+                        let mouse_y = mouse_pos.1;
+
+                        // check mouse's x position
+                        if mouse_pos.0 > 278.0 && mouse_pos.0 < 1002.0 {
+                            // if mouse's x position is between 278.0 and 1002.0, then it is in the width of the menu options, so check its y position
+                            if mouse_pos.1 > 287.0 && mouse_pos.1 < 325.0 {
+                                // if mouse's y position is between 287.0 and 325.0, then it is on menu option 0; menu_role = 0
+                                self.pause_menu_role = 0;
+                            } else if mouse_pos.1 > 325.0 && mouse_pos.1 < 363.0 {
+                                // if mouse's y position is between 325.0 and 363.0, then it is on menu option 1; menu_role = 1
+                                self.pause_menu_role = 1;
+                            } else if mouse_pos.1 > 363.0 && mouse_pos.1 < 401.0 {
+                                // if mouse's y position is between 363.0 and 401.0, then it is on menu option 2; menu_role = 2
+                                self.pause_menu_role = 2;
+                            } else if mouse_pos.1 > 401.0 && mouse_pos.1 < 439.0 {
+                                // if mouse's y position is between 401.0 and 439.0, then it is on menu option 3; menu_role = 3
+                                self.pause_menu_role = 3;
+                            } else if mouse_pos.1 > 439.0 && mouse_pos.1 < 477.0 {
+                                // if mouse's y position is between 439.0 and 477.0, then it is on menu option 4; menu_role = 4
+                                self.pause_menu_role = 4;
+                            }
+                        }
+                    }
+                    // mouse navigation done
+
+                    // keyboard navigation
+                    if is_key_pressed(self.look_up_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.pause_menu_role == 0 {
+                            self.pause_menu_role = 4;
+                        } else {
+                            self.pause_menu_role -= 1;
+                        }
+                    }
+                    if is_key_pressed(self.look_down_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.pause_menu_role == 4 {
+                            self.pause_menu_role = 0;
+                        } else {
+                            self.pause_menu_role += 1;
+                        }
+                    }
+                    /*if is_key_pressed(KeyCode::Escape) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        self.pause_menu_role = 0;
+                        self.pause_menu_state = PauseMenuState::Settings;
+                    }*/
+                    // keyboard navigation done
+
+                    // options handling
+                    if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        match self.pause_menu_role {
+                            0 => {
+                                // Dash
+                                self.player.dash_enabled = !self.player.dash_enabled;
+                            }
+                            1 => {
+                                // Sprint
+                                self.player.sprint_enabled = !self.player.sprint_enabled;
+                            }
+                            2 => {
+                                // Wall Jump
+                                self.player.wall_jump_enabled = !self.player.wall_jump_enabled;
+                            }
+                            3 => {
+                                // Double Jump
+                                self.player.double_jump_enabled = !self.player.double_jump_enabled;
+                            }
+                            4 => {
+                                // Back
+                                self.pause_menu_role = 0;
+                                self.pause_menu_state = PauseMenuState::Settings;
+                            }
+                            _ => {}
+                        }
+                    }
+                    // options handling done
+                }
+                PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard } => {
+                    // mouse navigation
+                    if self.mouse_moved_buffer > 0.0 {
+                        let mouse_pos = mouse_position();
+                        let mouse_x = mouse_pos.0;
+                        let mouse_y = mouse_pos.1;
+
+                        // check volume options
+                        // check mouse's x position
+                        if mouse_pos.0 > 278.0 && mouse_pos.0 < 478.0 {
+                            if mouse_pos.1 > 397.0 && mouse_pos.1 < 435.0 {
+                                // if mouse's y position is between 397.0 and 435.0, then it is on menu option 4; menu_role = 5
+                                self.pause_menu_role = 5;
+                            } else if mouse_pos.1 > 435.0 && mouse_pos.1 < 473.0 {
+                                // if mouse's y position is between 435.0 and 473.0, then it is on menu option 4; menu_role = 6
+                                self.pause_menu_role = 6;
+                            } else if mouse_pos.1 > 473.0 && mouse_pos.1 < 511.0 {
+                                // if mouse's y position is between 473.0 and 511.0, then it is on menu option 4; menu_role = 7
+                                self.pause_menu_role = 7;
+                            } else if mouse_pos.1 > 511.0 && mouse_pos.1 < 549.0 {
+                                // if mouse's y position is between 511.0 and 549.0, then it is on menu option 4; menu_role = 8
+                                self.pause_menu_role = 8;
+                            }
+                        }
+
+                        // check toggle options
+                        // check mouse's x position
+                        if mouse_pos.0 > 278.0 && mouse_pos.0 < 1002.0 {
+                            // if mouse's x position is between 278.0 and 1002.0, then it is in the width of the menu options, so check its y position
+                            if mouse_pos.1 > 207.0 && mouse_pos.1 < 245.0 {
+                                // if mouse's y position is between 207.0 and 245.0, then it is on menu option 0; menu_role = 0
+                                self.pause_menu_role = 0;
+                            } else if mouse_pos.1 > 245.0 && mouse_pos.1 < 283.0 {
+                                // if mouse's y position is between 245.0 and 283.0, then it is on menu option 1; menu_role = 1
+                                self.pause_menu_role = 1;
+                            } else if mouse_pos.1 > 283.0 && mouse_pos.1 < 321.0 {
+                                // if mouse's y position is between 283.0 and 321.0, then it is on menu option 2; menu_role = 2
+                                self.pause_menu_role = 2;
+                            } else if mouse_pos.1 > 321.0 && mouse_pos.1 < 359.0 {
+                                // if mouse's y position is between 321.0 and 359.0, then it is on menu option 3; menu_role = 3
+                                self.pause_menu_role = 3;
+                            } else if mouse_pos.1 > 359.0 && mouse_pos.1 < 397.0 {
+                                // if mouse's y position is between 359.0 and 397.0, then it is on menu option 4; menu_role = 4
+                                self.pause_menu_role = 4;
+                            } 
+                        }
+                    }
+                    // mouse navigation done
+
+                    // keyboard navigation
+                    if is_key_pressed(self.look_up_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.pause_menu_role == 0 {
+                            self.pause_menu_role = 8;
+                        } else {
+                            self.pause_menu_role -= 1;
+                        }
+                    }
+                    if is_key_pressed(self.look_down_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.pause_menu_role == 8 {
+                            self.pause_menu_role = 0;
+                        } else {
+                            self.pause_menu_role += 1;
+                        }
+                    }
+                    /*if is_key_pressed(KeyCode::Escape) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        self.pause_menu_role = 1;
+                        self.pause_menu_state = PauseMenuState::Settings;
+                    }*/
+                    // keyboard navigation done
+
+                    // options handling
+                    if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        match self.pause_menu_role {
+                            0 => {
+                                // Menu Music
+                                self.menu_music_settings_toggle = !self.menu_music_settings_toggle;
+                            }
+                            1 => {
+                                // Game Music
+                                self.game_music_settings_toggle = !self.game_music_settings_toggle;
+                            }
+                            2 => {
+                                // Ambient Sounds
+                                self.ambient_sounds_settings_toggle = !self.ambient_sounds_settings_toggle;
+                            }
+                            3 => {
+                                // Footsteps
+                                self.footsteps_settings_toggle = !self.footsteps_settings_toggle;
+                            }
+                            4 => {
+                                // Menu Clicks
+                                self.menu_clicks_settings_toggle = !self.menu_clicks_settings_toggle;
+                            }
+                            5 => {
+                                // Music Volume
+                                self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::MusicVolume };
+                            }
+                            6 => {
+                                // SFX Volume
+                                self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::SFXVolume };
+                            }
+                            7 => {
+                                // Menu Clicks Volume
+                                self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::MenuClicksVolume };
+                            }
+                            8 => {
+                                // Back
+                                self.pause_menu_role = 1;
+                                self.pause_menu_state = PauseMenuState::Settings;
+                            }
+                            _ => {}
+                        }
+                    }
+                    // options handling done
+                }
+                PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::MusicVolume } => {
+                    // mouse navigation
+                    if self.mouse_moved_buffer > 0.0 {
+                        let mouse_pos = mouse_position();
+                        let mouse_x = mouse_pos.0;
+                        let mouse_y = mouse_pos.1;
+
+                        // check mouse's y position
+                        if mouse_pos.1 > 397.0 && mouse_pos.1 < 435.0 {
+                            if mouse_pos.0 > 488.0 && mouse_pos.0 < 522.4 {
+                                // volume level 0
+                                self.potential_volume_lvl = 0;
+                            } else if mouse_pos.0 > 522.4 && mouse_pos.0 < 522.4 + (48.8 * 1.0) {
+                                // volume level 1
+                                self.potential_volume_lvl = 1;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 1.0) && mouse_pos.0 < 522.4 + (48.8 * 2.0) {
+                                // volume level 2
+                                self.potential_volume_lvl = 2;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 2.0) && mouse_pos.0 < 522.4 + (48.8 * 3.0) {
+                                // volume level 3
+                                self.potential_volume_lvl = 3;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 3.0) && mouse_pos.0 < 522.4 + (48.8 * 4.0) {
+                                // volume level 4
+                                self.potential_volume_lvl = 4;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 4.0) && mouse_pos.0 < 522.4 + (48.8 * 5.0) {
+                                // volume level 5
+                                self.potential_volume_lvl = 5;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 5.0) && mouse_pos.0 < 522.4 + (48.8 * 6.0) {
+                                // volume level 6
+                                self.potential_volume_lvl = 6;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 6.0) && mouse_pos.0 < 522.4 + (48.8 * 7.0) {
+                                // volume level 7
+                                self.potential_volume_lvl = 7;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 7.0) && mouse_pos.0 < 522.4 + (48.8 * 8.0) {
+                                // volume level 8
+                                self.potential_volume_lvl = 8;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 8.0) && mouse_pos.0 < 522.4 + (48.8 * 9.0) {
+                                // volume level 9
+                                self.potential_volume_lvl = 9;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 9.0) && mouse_pos.0 < 1002.0 {
+                                // volume level 10
+                                self.potential_volume_lvl = 10;
+                            }
+                        }
+
+                        if is_mouse_button_pressed(MouseButton::Left) {
+                            if self.menu_clicks_settings_toggle {
+                                play_sound_once(&self.menu_click_sound);
+                                set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                            }
+                            if mouse_pos.0 > 488.0 && mouse_pos.0 < 1002.0 && mouse_pos.1 > 397.0 && mouse_pos.1 < 435.0 {
+                                self.music_volume = self.potential_volume_lvl;
+                            } else {
+                                self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                            }
+                        }
+                    }
+                    // mouse navigation done
+
+                    // keyboard navigation
+                    if is_key_pressed(self.move_right_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.music_volume < 10 {
+                            self.music_volume += 1;
+                            //set_sound_volume(&self.menu_music, self.music_volume as f32 / 10.0);
+                            //set_sound_volume(&self.game_music, self.music_volume as f32 / 10.0);
+                        }
+                    }
+                    if is_key_pressed(self.move_left_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.music_volume > 0 {
+                            self.music_volume -= 1;
+                            //set_sound_volume(&self.menu_music, self.music_volume as f32 / 10.0);
+                            //set_sound_volume(&self.game_music, self.music_volume as f32 / 10.0);
+                        }
+                    }
+                    /*if is_key_pressed(KeyCode::Escape) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                    }*/
+                    if is_key_pressed(KeyCode::Enter) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                    }
+                    // keyboard navigation done
+                }
+                PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::SFXVolume } => {
+                    // mouse navigation
+                    if self.mouse_moved_buffer > 0.0 {
+                        let mouse_pos = mouse_position();
+                        let mouse_x = mouse_pos.0;
+                        let mouse_y = mouse_pos.1;
+
+                        // check mouse's y position
+                        if mouse_pos.1 > 435.0 && mouse_pos.1 < 473.0 {
+                            if mouse_pos.0 > 488.0 && mouse_pos.0 < 522.4 {
+                                // volume level 0
+                                self.potential_volume_lvl = 0;
+                            } else if mouse_pos.0 > 522.4 && mouse_pos.0 < 522.4 + (48.8 * 1.0) {
+                                // volume level 1
+                                self.potential_volume_lvl = 1;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 1.0) && mouse_pos.0 < 522.4 + (48.8 * 2.0) {
+                                // volume level 2
+                                self.potential_volume_lvl = 2;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 2.0) && mouse_pos.0 < 522.4 + (48.8 * 3.0) {
+                                // volume level 3
+                                self.potential_volume_lvl = 3;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 3.0) && mouse_pos.0 < 522.4 + (48.8 * 4.0) {
+                                // volume level 4
+                                self.potential_volume_lvl = 4;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 4.0) && mouse_pos.0 < 522.4 + (48.8 * 5.0) {
+                                // volume level 5
+                                self.potential_volume_lvl = 5;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 5.0) && mouse_pos.0 < 522.4 + (48.8 * 6.0) {
+                                // volume level 6
+                                self.potential_volume_lvl = 6;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 6.0) && mouse_pos.0 < 522.4 + (48.8 * 7.0) {
+                                // volume level 7
+                                self.potential_volume_lvl = 7;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 7.0) && mouse_pos.0 < 522.4 + (48.8 * 8.0) {
+                                // volume level 8
+                                self.potential_volume_lvl = 8;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 8.0) && mouse_pos.0 < 522.4 + (48.8 * 9.0) {
+                                // volume level 9
+                                self.potential_volume_lvl = 9;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 9.0) && mouse_pos.0 < 1002.0 {
+                                // volume level 10
+                                self.potential_volume_lvl = 10;
+                            }
+                        }
+
+                        if is_mouse_button_pressed(MouseButton::Left) {
+                            if self.menu_clicks_settings_toggle {
+                                play_sound_once(&self.menu_click_sound);
+                                set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                            }
+                            if mouse_pos.0 > 488.0 && mouse_pos.0 < 1002.0 && mouse_pos.1 > 435.0 && mouse_pos.1 < 473.0 {
+                                self.sfx_volume = self.potential_volume_lvl;
+                            } else {
+                                self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                            }
+                        }
+                    }
+                    // mouse navigation done
+
+                    // keyboard navigation
+                    if is_key_pressed(self.move_right_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.sfx_volume < 10 {
+                            self.sfx_volume += 1;
+                            //set_sound_volume(&self.ambient_sounds, self.sfx_volume as f32 / 10.0);
+                            //set_sound_volume(&self.footsteps, self.sfx_volume as f32 / 10.0);
+                        }
+                    }
+                    if is_key_pressed(self.move_left_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.sfx_volume > 0 {
+                            self.sfx_volume -= 1;
+                            //set_sound_volume(&self.ambient_sounds, self.sfx_volume as f32 / 10.0);
+                            //set_sound_volume(&self.footsteps, self.sfx_volume as f32 / 10.0);
+                        }
+                    }
+                    /*if is_key_pressed(KeyCode::Escape) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                    }*/
+                    if is_key_pressed(KeyCode::Enter) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                    }
+                    // keyboard navigation done
+                }
+                PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::MenuClicksVolume } => {
+                    // mouse navigation
+                    if self.mouse_moved_buffer > 0.0 {
+                        let mouse_pos = mouse_position();
+                        let mouse_x = mouse_pos.0;
+                        let mouse_y = mouse_pos.1;
+
+                        // check mouse's y position
+                        if mouse_pos.1 > 473.0 && mouse_pos.1 < 511.0 {
+                            if mouse_pos.0 > 488.0 && mouse_pos.0 < 522.4 {
+                                // volume level 0
+                                self.potential_volume_lvl = 0;
+                            } else if mouse_pos.0 > 522.4 && mouse_pos.0 < 522.4 + (48.8 * 1.0) {
+                                // volume level 1
+                                self.potential_volume_lvl = 1;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 1.0) && mouse_pos.0 < 522.4 + (48.8 * 2.0) {
+                                // volume level 2
+                                self.potential_volume_lvl = 2;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 2.0) && mouse_pos.0 < 522.4 + (48.8 * 3.0) {
+                                // volume level 3
+                                self.potential_volume_lvl = 3;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 3.0) && mouse_pos.0 < 522.4 + (48.8 * 4.0) {
+                                // volume level 4
+                                self.potential_volume_lvl = 4;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 4.0) && mouse_pos.0 < 522.4 + (48.8 * 5.0) {
+                                // volume level 5
+                                self.potential_volume_lvl = 5;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 5.0) && mouse_pos.0 < 522.4 + (48.8 * 6.0) {
+                                // volume level 6
+                                self.potential_volume_lvl = 6;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 6.0) && mouse_pos.0 < 522.4 + (48.8 * 7.0) {
+                                // volume level 7
+                                self.potential_volume_lvl = 7;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 7.0) && mouse_pos.0 < 522.4 + (48.8 * 8.0) {
+                                // volume level 8
+                                self.potential_volume_lvl = 8;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 8.0) && mouse_pos.0 < 522.4 + (48.8 * 9.0) {
+                                // volume level 9
+                                self.potential_volume_lvl = 9;
+                            } else if mouse_pos.0 > 522.4 + (48.8 * 9.0) && mouse_pos.0 < 1002.0 {
+                                // volume level 10
+                                self.potential_volume_lvl = 10;
+                            }
+                        }
+
+                        if is_mouse_button_pressed(MouseButton::Left) {
+                            if self.menu_clicks_settings_toggle {
+                                play_sound_once(&self.menu_click_sound);
+                                set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                            }
+                            if mouse_pos.0 > 488.0 && mouse_pos.0 < 1002.0 && mouse_pos.1 > 473.0 && mouse_pos.1 < 511.0 {
+                                self.menu_clicks_volume = self.potential_volume_lvl;
+                            } else {
+                                self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                            }
+                        }
+                    }
+                    // mouse navigation done
+
+                    // keyboard navigation
+                    if is_key_pressed(self.move_right_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.menu_clicks_volume < 10 {
+                            self.menu_clicks_volume += 1;
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                    }
+                    if is_key_pressed(self.move_left_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.menu_clicks_volume > 0 {
+                            self.menu_clicks_volume -= 1;
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                    }
+                    /*if is_key_pressed(KeyCode::Escape) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                    }*/
+                    if is_key_pressed(KeyCode::Enter) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        self.pause_menu_state = PauseMenuState::AudioSettings { audio_settings_state: AudioSettingsState::Standard };
+                    }
+                    // keyboard navigation done
+                }
+                PauseMenuState::VideoSettings => {
+                    // mouse navigation
+                    if self.mouse_moved_buffer > 0.0 {
+                        let mouse_pos = mouse_position();
+                        let mouse_x = mouse_pos.0;
+                        let mouse_y = mouse_pos.1;
+
+                        // check mouse's x position
+                        if mouse_pos.0 > 278.0 && mouse_pos.0 < 1002.0 {
+                            // if mouse's x position is between 278.0 and 1002.0, then it is in the width of the menu options, so check its y position
+                            if mouse_pos.1 > 327.0 && mouse_pos.1 < 365.0 {
+                                // if mouse's y position is between 327.0 and 365.0, then it is on menu option 0; menu_role = 0
+                                self.pause_menu_role = 0;
+                            } else if mouse_pos.1 > 365.0 && mouse_pos.1 < 403.0 {
+                                // if mouse's y position is between 365.0 and 403.0, then it is on menu option 1; menu_role = 1
+                                self.pause_menu_role = 1;
+                            } else if mouse_pos.1 > 403.0 && mouse_pos.1 < 441.0 {
+                                // if mouse's y position is between 403.0 and 441.0, then it is on menu option 2; menu_role = 2
+                                self.pause_menu_role = 2;
+                            }
+                        }
+                    }
+                    // mouse navigation done
+
+                    // keyboard navigation
+                    if is_key_pressed(self.look_up_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.pause_menu_role == 0 {
+                            self.pause_menu_role = 2;
+                        } else {
+                            self.pause_menu_role -= 1;
+                        }
+                    }
+                    if is_key_pressed(self.look_down_kb) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        if self.pause_menu_role == 2 {
+                            self.pause_menu_role = 0;
+                        } else {
+                            self.pause_menu_role += 1;
+                        }
+                    }
+                    /*if is_key_pressed(KeyCode::Escape) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        self.pause_menu_role = 2;
+                        self.pause_menu_state = PauseMenuState::Settings;
+                    }*/
+                    // keyboard navigation done
+
+                    // options handling
+                    if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
+                        if self.menu_clicks_settings_toggle {
+                            play_sound_once(&self.menu_click_sound);
+                            set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                        }
+                        match self.pause_menu_role {
+                            0 => {
+                                // Resolution
+                            }
+                            1 => {
+                                // Brightness
+                            }
+                            2 => {
+                                // Back
+                                self.pause_menu_role = 2;
+                                self.pause_menu_state = PauseMenuState::Settings;
+                            }
+                            _ => {}
+                        }
+                    }
+                    // options handling done
+                }
+                PauseMenuState::ControlsSettings => {
+                    if !self.awaiting_kb_input {
+                        // mouse navigation
+                        if self.mouse_moved_buffer > 0.0 {
+                            let mouse_pos = mouse_position();
+                            let mouse_x = mouse_pos.0;
+                            let mouse_y = mouse_pos.1;
+
+                            // check mouse's x position
+                            if mouse_pos.1 > 267.0 && mouse_pos.1 < 495.0 {
+                                if mouse_pos.0 > 278.0 && mouse_pos.0 < 640.0 {
+                                    // if mouse's x position is between 278.0 and 640.0, then it is in the width of the first column, so check its y position
+                                    self.pause_menu_controls_settings_col = 0;
+                                } else if mouse_pos.0 >= 640.0 && mouse_pos.0 < 1002.0 {
+                                    // if mouse's x position is between 640.0 and 1002.0, then it is in the width of the second column, so check its y position
+                                    self.pause_menu_controls_settings_col = 1;
+                                }
+                            }
+
+                            // check mouse's y position
+                            if mouse_pos.0 > 278.0 && mouse_pos.0 < 1002.0 {
+                                if mouse_pos.1 > 267.0 && mouse_pos.1 < 305.0 {
+                                    // if mouse's y position is between 267.0 and 305.0, then it is on menu option 0; menu_role = 0
+                                    self.pause_menu_controls_settings_row = 0;
+                                } else if mouse_pos.1 > 305.0 && mouse_pos.1 < 343.0 {
+                                    // if mouse's y position is between 305.0 and 343.0, then it is on menu option 1; menu_role = 1
+                                    self.pause_menu_controls_settings_row = 1;
+                                } else if mouse_pos.1 > 343.0 && mouse_pos.1 < 381.0 {
+                                    // if mouse's y position is between 343.0 and 381.0, then it is on menu option 2; menu_role = 2
+                                    self.pause_menu_controls_settings_row = 2;
+                                } else if mouse_pos.1 > 381.0 && mouse_pos.1 < 419.0 {
+                                    // if mouse's y position is between 381.0 and 419.0, then it is on menu option 2; menu_role = 3
+                                    self.pause_menu_controls_settings_row = 3;
+                                } else if mouse_pos.1 > 419.0 && mouse_pos.1 < 457.0 {
+                                    // if mouse's y position is between 419.0 and 457.0, then it is on menu option 2; menu_role = 4
+                                    self.pause_menu_controls_settings_row = 4;
+                                } else if mouse_pos.1 > 457.0 && mouse_pos.1 < 495.0 {
+                                    // if mouse's y position is between 457.0 and 495.0, then it is on menu option 2; menu_role = 4
+                                    self.pause_menu_controls_settings_row = 5;
+                                }
+                            }
+                        }
+                        // mouse navigation done
+
+                        // keyboard navigation
+                        if is_key_pressed(self.look_up_kb) {
+                            if self.menu_clicks_settings_toggle {
+                                play_sound_once(&self.menu_click_sound);
+                                set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                            }
+                            if self.pause_menu_controls_settings_row == 0 {
+                                self.pause_menu_controls_settings_row = 5;
+                            } else {
+                                self.pause_menu_controls_settings_row -= 1;
+                            }
+                        }
+                        if is_key_pressed(self.look_down_kb) {
+                            if self.menu_clicks_settings_toggle {
+                                play_sound_once(&self.menu_click_sound);
+                                set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                            }
+                            if self.pause_menu_controls_settings_row == 5 {
+                                self.pause_menu_controls_settings_row = 0;
+                            } else {
+                                self.pause_menu_controls_settings_row += 1;
+                            }
+                        }
+                        if self.pause_menu_controls_settings_row != 5 {
+                            if is_key_pressed(self.move_right_kb) {
+                                if self.menu_clicks_settings_toggle {
+                                    play_sound_once(&self.menu_click_sound);
+                                    set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                                }
+                                if self.pause_menu_controls_settings_col == 1 {
+                                    self.pause_menu_controls_settings_col = 0;
+                                } else {
+                                    self.pause_menu_controls_settings_col += 1;
+                                }
+                            }
+                            if is_key_pressed(self.move_left_kb) {
+                                if self.menu_clicks_settings_toggle {
+                                    play_sound_once(&self.menu_click_sound);
+                                    set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                                }
+                                if self.pause_menu_controls_settings_col == 0 {
+                                    self.pause_menu_controls_settings_col = 1;
+                                } else {
+                                    self.pause_menu_controls_settings_col -= 1;
+                                }
+                            }
+                        }
+                        /*if is_key_pressed(KeyCode::Escape) {
+                            if self.menu_clicks_settings_toggle {
+                                play_sound_once(&self.menu_click_sound);
+                                set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                            }
+                            self.pause_menu_role = 3;
+                            self.pause_menu_state = PauseMenuState::Settings;
+                            self.pause_menu_controls_settings_row = 0;
+                            self.pause_menu_controls_settings_col = 0;
+                            self.kb_to_change = Keybind::None;
+                        }*/
+                        // keyboard navigation done
+
+                        // options handling
+                        if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
+                            if self.menu_clicks_settings_toggle {
+                                play_sound_once(&self.menu_click_sound);
+                                set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                            }
+                            if self.pause_menu_controls_settings_col == 0 {
+                                // in first column
+                                match self.pause_menu_controls_settings_row {
+                                    0 => {
+                                        // Move Left
+                                        self.awaiting_kb_input = true;
+                                        self.kb_to_change = Keybind::MoveLeft;
+                                    }
+                                    1 => {
+                                        // Move Right
+                                        self.awaiting_kb_input = true;
+                                        self.kb_to_change = Keybind::MoveRight;
+                                    }
+                                    2 => {
+                                        // Look Up
+                                        self.awaiting_kb_input = true;
+                                        self.kb_to_change = Keybind::LookUp;
+                                    }
+                                    3 => {
+                                        // Look Down
+                                        self.awaiting_kb_input = true;
+                                        self.kb_to_change = Keybind::LookDown;
+                                    }
+                                    4 => {
+                                        // Jump
+                                        self.awaiting_kb_input = true;
+                                        self.kb_to_change = Keybind::Jump;
+                                    }
+                                    5 => {
+                                        // Back
+                                        self.pause_menu_role = 3;
+                                        self.pause_menu_state = PauseMenuState::Settings;
+                                        self.pause_menu_controls_settings_row = 0;
+                                        self.pause_menu_controls_settings_col = 0;
+                                        self.kb_to_change = Keybind::None;
+                                    }
+                                    _ => {}
+                                }
+                            } else {
+                                // in second column
+                                match self.pause_menu_controls_settings_row {
+                                    0 => {
+                                        // Dash/Sprint
+                                        self.awaiting_kb_input = true;
+                                        self.kb_to_change = Keybind::DashSprint;
+                                    }
+                                    1 => {
+                                        // Melee Attack
+                                        self.awaiting_kb_input = true;
+                                        self.kb_to_change = Keybind::MeleeAttack;
+                                    }
+                                    2 => {
+                                        // Ranged Attack
+                                        self.awaiting_kb_input = true;
+                                        self.kb_to_change = Keybind::RangedAttack;
+                                    }
+                                    3 => {
+                                        // Interact
+                                        self.awaiting_kb_input = true;
+                                        self.kb_to_change = Keybind::Interact;
+                                    }
+                                    4 => {
+                                        // Inventory
+                                        self.awaiting_kb_input = true;
+                                        self.kb_to_change = Keybind::Inventory;
+                                    }
+                                    5 => {
+                                        // Back
+                                        self.pause_menu_role = 3;
+                                        self.pause_menu_state = PauseMenuState::Settings;
+                                        self.pause_menu_controls_settings_row = 0;
+                                        self.pause_menu_controls_settings_col = 0;
+                                        self.kb_to_change = Keybind::None;
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                        // options handling done
+                    } else {
+                        if is_key_pressed(KeyCode::Escape) || is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
+                            if self.menu_clicks_settings_toggle {
+                                play_sound_once(&self.menu_click_sound);
+                                set_sound_volume(&self.menu_click_sound, self.menu_clicks_volume as f32 / 10.0);
+                            }
+                            self.awaiting_kb_input = false;
+                        }
+
+                        self.change_keybind();
+                    }
+                }
+                PauseMenuState::None => {}
+            }
+        }
+    }
+
+    /*pub fn draw1(&mut self) {
         if !matches!(self.startup_state, StartupState::Done) {
             draw_startup_overlay(
                 &self.startup_state,
@@ -665,7 +1862,12 @@ impl GameState {
         }
 
         if self.paused {
-            draw_pause_menu_overlay( self.pause_menu_state.clone() );
+            draw_pause_menu_overlay(
+                self.pause_menu_state.clone(),
+                self.pause_menu_role,
+                self.pause_menu_controls_settings_row,
+                self.pause_menu_controls_settings_col,
+            );
 
             match self.pause_menu_state {
                 PauseMenuState::Menu { .. } => {
@@ -673,6 +1875,30 @@ impl GameState {
                 }
                 PauseMenuState::None => {}
             }
+
+            match self.pause_menu_state {
+                PauseMenuState::Menu { .. } => {
+                    todo!();
+                }
+                PauseMenuState::Settings { .. } => {
+                    todo!();
+                }
+                PauseMenuState::GameSettings { .. } => {
+                    todo!();
+                }
+                PauseMenuState::AudioSettings { .. } => {
+                    todo!();
+                }
+                PauseMenuState::VideoSettings { .. } => {
+                    todo!();
+                }
+                PauseMenuState::ControlsSettings { .. } => {
+                    todo!();
+                }
+                PauseMenuState::None => {}
+            }
+
+
 
             if self.mouse_moved_buffer > 0.0 {
                 let mouse_pos = mouse_position();
@@ -740,7 +1966,7 @@ impl GameState {
                 }
             }
         }
-    }
+    }*/
 
     fn handle_startup_input(&mut self) {
         match &self.startup_state {
@@ -1546,12 +2772,14 @@ impl GameState {
                         let mouse_y = mouse_pos.1;
 
                         // check mouse's x position
-                        if mouse_pos.0 > 278.0 && mouse_pos.0 < 640.0 {
-                            // if mouse's x position is between 278.0 and 640.0, then it is in the width of the first column, so check its y position
-                            self.controls_settings_col = 0;
-                        } else if mouse_pos.0 >= 640.0 && mouse_pos.0 < 1002.0 {
-                            // if mouse's x position is between 640.0 and 1002.0, then it is in the width of the second column, so check its y position
-                            self.controls_settings_col = 1;
+                        if mouse_pos.1 > 267.0 && mouse_pos.1 < 495.0 {
+                            if mouse_pos.0 > 278.0 && mouse_pos.0 < 640.0 {
+                                // if mouse's x position is between 278.0 and 640.0, then it is in the width of the first column, so check its y position
+                                self.controls_settings_col = 0;
+                            } else if mouse_pos.0 >= 640.0 && mouse_pos.0 < 1002.0 {
+                                // if mouse's x position is between 640.0 and 1002.0, then it is in the width of the second column, so check its y position
+                                self.controls_settings_col = 1;
+                            }
                         }
 
                         // check mouse's y position
@@ -1635,6 +2863,7 @@ impl GameState {
                         self.startup_state = StartupState::Settings;
                         self.controls_settings_row = 0;
                         self.controls_settings_col = 0;
+                        self.kb_to_change = Keybind::None;
                     }
                     // controls settings keyboard navigation done
 
@@ -1722,6 +2951,7 @@ impl GameState {
                             }
                         }
                     }
+                    // controls settings option handling done
                 } else {
                     if is_key_pressed(KeyCode::Escape) || is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
                         if self.menu_clicks_settings_toggle {
@@ -1733,7 +2963,6 @@ impl GameState {
 
                     self.change_keybind();
                 }
-                // controls settings option handling done
             }
             _ => {}
         }

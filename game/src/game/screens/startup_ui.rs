@@ -80,6 +80,7 @@ pub fn draw_startup_overlay(
     let row_h = 38.0 * scale;
     let row_pad_x = 18.0 * scale;
     let row_bg_w = rect.w - row_pad_x * 2.0;
+    let row0_y = y + 92.0 * scale;
 
     match startup_state {
         StartupState::Splash => {
@@ -101,8 +102,6 @@ pub fn draw_startup_overlay(
                 ty.headline,
                 palette.text_primary,
             );
-
-            let row0_y = y + 92.0 * scale;
 
             const MAIN_MENU_OPTIONS: usize = 3;
 
@@ -163,8 +162,6 @@ pub fn draw_startup_overlay(
                 palette.text_primary,
             );
 
-            let row0_y = y + 92.0 * scale;
-
             const SETTINGS_OPTIONS: usize = 5;
 
             let labels: [&str; SETTINGS_OPTIONS] = [
@@ -224,8 +221,6 @@ pub fn draw_startup_overlay(
                 ty.headline,
                 palette.text_primary,
             );
-
-            let row0_y = y + 92.0 * scale;
 
             const GAME_OPTIONS: usize = 5;
 
@@ -334,8 +329,6 @@ pub fn draw_startup_overlay(
                 ty.headline,
                 palette.text_primary,
             );
-
-            let row0_y = y + 92.0 * scale;
 
             const AUDIO_OPTIONS: usize = 9;
 
@@ -564,8 +557,6 @@ pub fn draw_startup_overlay(
                 palette.text_primary,
             );
 
-            let row0_y = y + 92.0 * scale;
-
             const VIDEO_OPTIONS: usize = 3;
 
             let labels: [&str; VIDEO_OPTIONS] = [
@@ -623,8 +614,6 @@ pub fn draw_startup_overlay(
                 ty.headline,
                 palette.text_primary,
             );
-
-            let row0_y = y + 92.0 * scale;
 
             const CONTROLS_OPTIONS_ROWS: usize = 5;
 
