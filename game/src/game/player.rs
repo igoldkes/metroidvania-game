@@ -254,10 +254,14 @@ impl Player {
                     self.jump_buffer_time = 0.0;
                 // todo!("add code for the cases that player is not on the ground and dashing, and the player is on the ground and dashing, and not on the ground and not dashing")
                 } else if !self.on_ground && self.dash_buffer <= 0.0 && self.double_jump_enabled && !self.double_jumped {
+                    // if player is not on the ground, and is not movement locked from currently dashing, and is able to double jump, then perform a double jump
                     self.vel_y = JUMP_FORCE;
                     self.is_double_jumping = true;
                     self.double_jumped = true;
                     self.jump_buffer_time = 0.0;
+                } else {
+                    // decrement jump buffer time in all other cases
+                    self.jump_buffer_time -= dt;
                 }
             }
             if is_key_released(jump_kb) && self.vel_y < 0.0 {
@@ -501,7 +505,7 @@ impl Player {
         // POSITION UPDATES AND COLLISION RESOLUTION
         let gravity = if self.vel_y < 0.0 {
             GRAVITY_UP
-        } else if self.vel_y >= 0.0 && !self.on_wall {
+        } else if !self.on_wall || !self.wall_jump_enabled {
             GRAVITY_DOWN
         } else {
             GRAVITY_DOWN / 3.0 * power(self.wall_slide_timer, 3).min(1.0)
@@ -514,8 +518,9 @@ impl Player {
         self.on_ground = false;
         if self.dash_buffer <= 0.0 {
             self.y += self.vel_y * dt;
-        } else {
-            // falling momentum resets when dash is complete and player resumes falling
+        } else if self.vel_y > 0.0 {
+            // falling momentum resets when dash is complete and player resumes falling, but upward momentum is conserved and resumed when dash is complete
+            // to make it such that upward momentum is also forgotten, simply change this to an else statement instead of else if
             self.vel_y = 0.0;
         }
         self.resolve_vertical_collisions();
@@ -545,7 +550,7 @@ impl Player {
                 Color::from_rgba(0, 0, 255, 80),
             );
         }
-        if self.on_wall {
+        if self.on_wall && self.wall_jump_enabled {
             draw_rectangle(
                 self.x,
                 self.y - self.pheight as f32 * TILE_SIZE,
@@ -805,22 +810,6 @@ impl Player {
                     self.room_change = RoomChange::Change { door: door.clone() };
                 }
             }
-        }
-    }
-
-    fn dash(&mut self) {
-        self.dashed = true;
-        let dash_speed = 800.0;
-        let dash_direction = match self.x_direction {
-            XDirection::Left => {
-                -1.0
-            }
-            XDirection::Right => {
-                1.0
-            }
-        };
-        if self.knockback_vel_x == 0.0 {
-            self.vel_x = dash_speed * dash_direction;
         }
     }
 

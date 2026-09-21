@@ -106,7 +106,6 @@ pub fn draw_pause_menu_overlay(
 
             for i in 0..PAUSE_MENU_OPTIONS {
                 let ry = row0_y + i as f32 * row_h;
-                //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x, ry - 15.0 * scale, row_bg_w, row_h);
                 if menu_role == i {
                     draw_rectangle(
                         x + row_pad_x,
@@ -115,7 +114,7 @@ pub fn draw_pause_menu_overlay(
                         row_h,
                         Color::from_rgba(88, 94, 118, 235),
                     );
-                    println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x, ry - 15.0 * scale, row_bg_w, row_h);
+                    //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x, ry - 15.0 * scale, row_bg_w, row_h);
                 }
                 let label = labels[i];
                 if i != PAUSE_MENU_OPTIONS - 1 {
