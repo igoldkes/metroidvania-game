@@ -4,7 +4,7 @@ use super::super::ui::components::{draw_modal_chrome, draw_wrapped_text, ModalCh
 use super::super::ui::layout::{centered_clamped_rect, safe_margins, scaled_type, ui_scale};
 use super::super::ui::theme::{TypeScale, UiPreferences};
 use super::super::ui::{draw_panel, PanelStyle};
-use super::super::{PauseMenuState, AudioSettingsState};
+use super::super::{PauseMenuState, AudioSettingsState, InventoryState, InventoryPage};
 
 pub fn draw_pause_menu_overlay(
     menu_state: PauseMenuState,
@@ -791,5 +791,94 @@ pub fn draw_pause_menu_overlay(
             );
         }
         PauseMenuState::None => {}
+    }
+}
+
+pub fn draw_inventory_overlay(
+    inventory_page: InventoryPage,
+) {
+    set_default_camera();
+
+    let prefs = UiPreferences::default();
+    let palette = prefs.palette();
+    let scale = ui_scale();
+    let margin = safe_margins(scale);
+    let ty = scaled_type(&TypeScale::default(), scale);
+
+    let width = screen_width();
+    let height = screen_height();
+
+    draw_rectangle(0.0, 0.0, width, height, Color::from_rgba(0, 0, 0, 160));
+
+    let preferred_width = match inventory_page {
+        InventoryPage::Items => 700.0,
+        InventoryPage::Equipment => 700.0,
+        InventoryPage::Map => 700.0,
+        InventoryPage::EnemyLog => 700.0,
+        _ => 700.0,
+    };
+    let preferred_height = match inventory_page {
+        InventoryPage::Items => 500.0,
+        InventoryPage::Equipment => 500.0,
+        InventoryPage::Map => 500.0,
+        InventoryPage::EnemyLog => 500.0,
+        _ => 500.0,
+    };
+    let pw = preferred_width * scale;
+    let ph = preferred_height * scale;
+    let rect = centered_clamped_rect(pw, ph, margin);
+    let x = rect.x;
+    let y = rect.y;
+
+    let row_h = 38.0 * scale;
+    let row_pad_x = 18.0 * scale;
+    let row_bg_w = rect.w - row_pad_x * 2.0;
+    let row0_y = y + 92.0 * scale;
+
+    draw_panel(
+        Rect::new(x, y, pw, ph),
+        PanelStyle {
+            bg: Color::from_rgba(12, 14, 28, 245),
+            border: Some((2.0, Color::from_rgba(130, 150, 220, 255))),
+        },
+    );
+
+    match inventory_page {
+        InventoryPage::Items => {
+            draw_text(
+                "Items",
+                x + row_pad_x,
+                y + row_h,
+                ty.headline,
+                palette.text_primary,
+            );
+        }
+        InventoryPage::Equipment => {
+            draw_text(
+                "Equipment",
+                x + row_pad_x,
+                y + row_h,
+                ty.headline,
+                palette.text_primary,
+            );
+        }
+        InventoryPage::Map => {
+            draw_text(
+                "Map",
+                x + row_pad_x,
+                y + row_h,
+                ty.headline,
+                palette.text_primary,
+            );
+        }
+        InventoryPage::EnemyLog => {
+            draw_text(
+                "EnemyLog",
+                x + row_pad_x,
+                y + row_h,
+                ty.headline,
+                palette.text_primary,
+            );
+        }
     }
 }

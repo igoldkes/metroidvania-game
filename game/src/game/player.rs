@@ -85,6 +85,7 @@ pub struct Player {
     pub is_double_jumping: bool,
     pub dash_cooldown: f32,
     pub was_on_ground: bool,
+    pub inventory_open: bool,
 }
 
 impl Player {
@@ -142,6 +143,7 @@ impl Player {
             is_double_jumping: false,
             dash_cooldown: 0.0,
             was_on_ground: true,
+            inventory_open: false,
         }
     }
 
@@ -182,7 +184,7 @@ impl Player {
         }
         // BUFFER DECREMENTS DONE
 
-        if !self.paused && self.movement_blocked_buffer <= 0.0 {
+        if !self.paused && self.movement_blocked_buffer <= 0.0 && !self.inventory_open {
             // if game is not paused and player can move, then run the corresponding logic
 
             // INITIAL DIRECTION SET
