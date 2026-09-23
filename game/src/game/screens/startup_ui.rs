@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 use super::super::ui::components::{draw_modal_chrome, draw_wrapped_text, ModalChromeProps};
 use super::super::ui::layout::{centered_clamped_rect, safe_margins, scaled_type, ui_scale};
 use super::super::ui::theme::{TypeScale, UiPreferences};
-use super::super::{StartupState, AudioSettingsState};
+use super::super::{StartupState, AudioSettingsState, SaveFile};
 
 #[allow(clippy::too_many_arguments)]
 pub fn draw_startup_overlay(
@@ -34,6 +34,11 @@ pub fn draw_startup_overlay(
     interact_kb: KeyCode,
     inventory_kb: KeyCode,
     awaiting_kb_input: bool,
+    save_file_menu_role: usize,
+    save_1: &SaveFile,
+    save_2: &SaveFile,
+    save_3: &SaveFile,
+    save_4: &SaveFile,
 ) {
     let width = screen_width();
     let height = screen_height();
@@ -54,6 +59,7 @@ pub fn draw_startup_overlay(
         StartupState::AudioSettings { .. } => 460.0,
         StartupState::VideoSettings => 220.0,
         StartupState::ControlsSettings => 340.0,
+        StartupState::Saves => 300.0,
         _ => 220.0,
     };
 
@@ -148,6 +154,119 @@ pub fn draw_startup_overlay(
                         ty.body,
                         Color::from_rgba(255, 180, 160, 255),
                     );
+                }
+            }
+        }
+        StartupState::Saves => {
+            // Save Files
+
+            draw_text(
+                "Saves",
+                x + row_pad_x,
+                y + row_h,
+                ty.headline,
+                palette.text_primary,
+            );
+
+            const SAVES_OPTIONS: usize = 5;
+
+            let labels: [&str; SAVES_OPTIONS] = [
+                if matches!(save_1, SaveFile::Save) {"Save 1"} else {"Create"},
+                if matches!(save_2, SaveFile::Save) {"Save 2"} else {"Create"},
+                if matches!(save_3, SaveFile::Save) {"Save 3"} else {"Create"},
+                if matches!(save_4, SaveFile::Save) {"Save 4"} else {"Create"},
+                "Back",
+            ];
+
+            for i in 0..SAVES_OPTIONS {
+                let ry = row0_y + i as f32 * row_h;
+
+                if menu_role == i {
+                    // draw highlight box
+                    if save_file_menu_role == 0 {
+                        draw_rectangle(
+                            x + row_pad_x,
+                            ry - 15.0 * scale,
+                            row_bg_w - 89.0 * scale,
+                            row_h,
+                            Color::from_rgba(88, 94, 118, 235),
+                        );
+                    } else {
+                        draw_rectangle(
+                            x + row_pad_x + 635.0 * scale,
+                            ry - 15.0 * scale,
+                            89.0 * scale,
+                            row_h,
+                            Color::from_rgba(88, 94, 118, 235),
+                        );
+                    }
+                }
+
+                let label = labels[i];
+                if i != SAVES_OPTIONS - 1 {
+                    draw_text(
+                        label,
+                        x + row_pad_x + 10.0 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        palette.text_primary,
+                    );
+                } else {
+                    draw_text(
+                        label,
+                        x + row_pad_x + 10.0 * scale,
+                        ry + 8.0 * scale,
+                        ty.body,
+                        Color::from_rgba(255, 180, 160, 255),
+                    );
+                }
+
+                match i {
+                    0 => {
+                        if matches!(save_1, &SaveFile::Save) {
+                            draw_text(
+                                "delete",
+                                x + row_pad_x + 650.0 * scale,
+                                ry + 8.0 * scale,
+                                ty.body,
+                                palette.text_primary,
+                            );
+                        }
+                    }
+                    1 => {
+                        if matches!(save_2, &SaveFile::Save) {
+                            draw_text(
+                                "delete",
+                                x + row_pad_x + 650.0 * scale,
+                                ry + 8.0 * scale,
+                                ty.body,
+                                palette.text_primary,
+                            );
+                        }
+                    }
+                    2 => {
+                        if matches!(save_3, &SaveFile::Save) {
+                            draw_text(
+                                "delete",
+                                x + row_pad_x + 650.0 * scale,
+                                ry + 8.0 * scale,
+                                ty.body,
+                                palette.text_primary,
+                            );
+                        }
+                    }
+                    3 => {
+                        if matches!(save_4, &SaveFile::Save) {
+                            draw_text(
+                                "delete",
+                                x + row_pad_x + 650.0 * scale,
+                                ry + 8.0 * scale,
+                                ty.body,
+                                palette.text_primary,
+                            );
+                        }
+                    }
+                    _ => {}
                 }
             }
         }

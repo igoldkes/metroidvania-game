@@ -28,7 +28,7 @@ enum StartupState {
     // main menu
     MainMenu,
     // save files page
-    //Saves,
+    Saves,
     // general settings page
     Settings,
     // game settings page
@@ -40,6 +40,12 @@ enum StartupState {
     // controls settings page
     ControlsSettings,
     Done,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SaveFile {
+    None,
+    Save,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -276,6 +282,11 @@ pub struct GameState {
     awaiting_kb_input: bool,
     kb_to_change: Keybind,
     inventory_state: InventoryState,
+    save_file_menu_role: usize,
+    save_1: SaveFile,
+    save_2: SaveFile,
+    save_3: SaveFile,
+    save_4: SaveFile,
 }
 
 impl GameState {
@@ -349,6 +360,7 @@ impl GameState {
         let cam = Camera2D {
             target: vec2(width / 2.0, height / 2.0),
             zoom: vec2(2.0 / width, 2.0 / height),
+            offset: vec2(0.0, -0.25),
             ..Default::default()
         };
 
@@ -420,6 +432,11 @@ impl GameState {
             awaiting_kb_input: false,
             kb_to_change: Keybind::None,
             inventory_state: InventoryState::Closed { last_inventory_page: InventoryPage::Items },
+            save_file_menu_role: 0,
+            save_1: SaveFile::None,
+            save_2: SaveFile::None,
+            save_3: SaveFile::None,
+            save_4: SaveFile::None,
         }
     }
 
@@ -1619,6 +1636,11 @@ impl GameState {
                 self.interact_kb,
                 self.inventory_kb,
                 self.awaiting_kb_input,
+                self.save_file_menu_role,
+                &self.save_1,
+                &self.save_2,
+                &self.save_3,
+                &self.save_4,
             );
             return;
         }
@@ -2035,8 +2057,8 @@ impl GameState {
                         0 => {
                             // Play
                             self.startup_menu_role = 0;
-                            self.startup_state = StartupState::Done;
-                            self.story = StoryPhase::Playing;
+                            self.startup_state = StartupState::Saves;
+                            //self.story = StoryPhase::Playing;
                         }
                         1 => {
                             // Settings
@@ -2051,6 +2073,231 @@ impl GameState {
                     }
                 }
                 // main menu options handling done
+            }
+            StartupState::Saves => {
+                // save file navigation with mouse
+                // todo!();
+                // save file navigation with mouse done
+
+                // save file navigation with keyboard
+                if is_key_pressed(self.look_down_kb) {
+                    self.click_sound();
+                    if self.startup_menu_role == 4 {
+                        self.startup_menu_role = 0;
+                    } else {
+                        self.startup_menu_role += 1;
+                    }
+                    self.save_file_menu_role = 0;
+                }
+                if is_key_pressed(self.look_up_kb) {
+                    self.click_sound();
+                    if self.startup_menu_role == 0 {
+                        self.startup_menu_role = 4;
+                    } else {
+                        self.startup_menu_role -= 1;
+                    }
+                    self.save_file_menu_role = 0;
+                }
+                if is_key_pressed(self.move_right_kb) {
+                    match self.startup_menu_role {
+                        0 => {
+                            // save file 1
+                            if matches!(self.save_1, SaveFile::Save) {
+                                if self.save_file_menu_role == 0 {
+                                    self.click_sound();
+                                    self.save_file_menu_role = 1;
+                                }
+                            }
+                        }
+                        1 => {
+                            // save file 2
+                            if matches!(self.save_2, SaveFile::Save) {
+                                if self.save_file_menu_role == 0 {
+                                    self.click_sound();
+                                    self.save_file_menu_role = 1;
+                                }
+                            }
+                        }
+                        2 => {
+                            // save file 3
+                            if matches!(self.save_3, SaveFile::Save) {
+                                if self.save_file_menu_role == 0 {
+                                    self.click_sound();
+                                    self.save_file_menu_role = 1;
+                                }
+                            }
+                        }
+                        3 => {
+                            // save file 4
+                            if matches!(self.save_4, SaveFile::Save) {
+                                if self.save_file_menu_role == 0 {
+                                    self.click_sound();
+                                    self.save_file_menu_role = 1;
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                if is_key_pressed(self.move_left_kb) {
+                    match self.startup_menu_role {
+                        0 => {
+                            // save file 1
+                            if matches!(self.save_1, SaveFile::Save) {
+                                if self.save_file_menu_role == 1 {
+                                    self.click_sound();
+                                    self.save_file_menu_role = 0;
+                                }
+                            }
+                        }
+                        1 => {
+                            // save file 2
+                            if matches!(self.save_2, SaveFile::Save) {
+                                if self.save_file_menu_role == 1 {
+                                    self.click_sound();
+                                    self.save_file_menu_role = 0;
+                                }
+                            }
+                        }
+                        2 => {
+                            // save file 3
+                            if matches!(self.save_3, SaveFile::Save) {
+                                if self.save_file_menu_role == 1 {
+                                    self.click_sound();
+                                    self.save_file_menu_role = 0;
+                                }
+                            }
+                        }
+                        3 => {
+                            // save file 4
+                            if matches!(self.save_4, SaveFile::Save) {
+                                if self.save_file_menu_role == 1 {
+                                    self.click_sound();
+                                    self.save_file_menu_role = 0;
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                if is_key_pressed(KeyCode::Escape) {
+                    self.click_sound();
+                    self.startup_menu_role = 0;
+                    self.save_file_menu_role = 0;
+                    self.startup_state = StartupState::MainMenu;
+                }
+                // save file navigation with keyboard done
+
+                // save file options handling
+                if is_key_pressed(KeyCode::Enter) || is_mouse_button_pressed(MouseButton::Left) {
+                    self.click_sound();
+                    match self.startup_menu_role {
+                        0 => {
+                            // save file 1
+                            if matches!(self.save_1, SaveFile::Save) {
+                                // save created
+                                if self.save_file_menu_role == 0 {
+                                    // play save
+                                    self.startup_menu_role = 0;
+                                    self.save_file_menu_role = 0;
+                                    self.startup_state = StartupState::Done;
+                                    self.story = StoryPhase::Playing;
+                                } else {
+                                    // delete save
+                                    self.save_1 = SaveFile::None;
+                                    self.save_file_menu_role = 0;
+                                }
+                            } else {
+                                // no save created, so create save and play
+                                self.save_1 = SaveFile::Save;
+                                self.startup_menu_role = 0;
+                                self.save_file_menu_role = 0;
+                                self.startup_state = StartupState::Done;
+                                self.story = StoryPhase::Playing;
+                            }
+                        }
+                        1 => {
+                            // save file 2
+                            if matches!(self.save_2, SaveFile::Save) {
+                                // save created
+                                if self.save_file_menu_role == 0 {
+                                    // play save
+                                    self.startup_menu_role = 0;
+                                    self.save_file_menu_role = 0;
+                                    self.startup_state = StartupState::Done;
+                                    self.story = StoryPhase::Playing;
+                                } else {
+                                    // delete save
+                                    self.save_2 = SaveFile::None;
+                                    self.save_file_menu_role = 0;
+                                }
+                            } else {
+                                // no save created, so create save and play
+                                self.save_2 = SaveFile::Save;
+                                self.startup_menu_role = 0;
+                                self.save_file_menu_role = 0;
+                                self.startup_state = StartupState::Done;
+                                self.story = StoryPhase::Playing;
+                            }
+                        }
+                        2 => {
+                            // save file 3
+                            if matches!(self.save_3, SaveFile::Save) {
+                                // save created
+                                if self.save_file_menu_role == 0 {
+                                    // play save
+                                    self.startup_menu_role = 0;
+                                    self.save_file_menu_role = 0;
+                                    self.startup_state = StartupState::Done;
+                                    self.story = StoryPhase::Playing;
+                                } else {
+                                    // delete save
+                                    self.save_3 = SaveFile::None;
+                                    self.save_file_menu_role = 0;
+                                }
+                            } else {
+                                // no save created, so create save and play
+                                self.save_3 = SaveFile::Save;
+                                self.startup_menu_role = 0;
+                                self.save_file_menu_role = 0;
+                                self.startup_state = StartupState::Done;
+                                self.story = StoryPhase::Playing;
+                            }
+                        }
+                        3 => {
+                            // save file 4
+                            if matches!(self.save_4, SaveFile::Save) {
+                                // save created
+                                if self.save_file_menu_role == 0 {
+                                    // play save
+                                    self.startup_menu_role = 0;
+                                    self.save_file_menu_role = 0;
+                                    self.startup_state = StartupState::Done;
+                                    self.story = StoryPhase::Playing;
+                                } else {
+                                    // delete save
+                                    self.save_4 = SaveFile::None;
+                                    self.save_file_menu_role = 0;
+                                }
+                            } else {
+                                // no save created, so create save and play
+                                self.save_4 = SaveFile::Save;
+                                self.startup_menu_role = 0;
+                                self.save_file_menu_role = 0;
+                                self.startup_state = StartupState::Done;
+                                self.story = StoryPhase::Playing;
+                            }
+                        }
+                        4 => {
+                            // back
+                            self.startup_menu_role = 0;
+                            self.save_file_menu_role = 0;
+                            self.startup_state = StartupState::MainMenu;
+                        }
+                        _ => {}
+                    }
+                }
+                // save file options handling done
             }
             StartupState::Settings => {
                 // settings navigation with mouse
