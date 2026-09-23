@@ -183,22 +183,35 @@ pub fn draw_startup_overlay(
 
                 if menu_role == i {
                     // draw highlight box
+                    //println!("highlight box for menu_role {}: top-left: ({}, {}), width: {}, height: {}", i, x + row_pad_x, ry - 15.0 * scale, row_bg_w - 89.0 * scale, row_h);
                     if save_file_menu_role == 0 {
-                        draw_rectangle(
-                            x + row_pad_x,
-                            ry - 15.0 * scale,
-                            row_bg_w - 89.0 * scale,
-                            row_h,
-                            Color::from_rgba(88, 94, 118, 235),
-                        );
+                        if i != SAVES_OPTIONS - 1 {
+                            draw_rectangle(
+                                x + row_pad_x,
+                                ry - 15.0 * scale,
+                                row_bg_w - 89.0 * scale,
+                                row_h,
+                                Color::from_rgba(88, 94, 118, 235),
+                            );
+                        } else {
+                            draw_rectangle(
+                                x + row_pad_x,
+                                ry - 15.0 * scale,
+                                row_bg_w,
+                                row_h,
+                                Color::from_rgba(88, 94, 118, 235),
+                            );
+                        }
                     } else {
-                        draw_rectangle(
-                            x + row_pad_x + 635.0 * scale,
-                            ry - 15.0 * scale,
-                            89.0 * scale,
-                            row_h,
-                            Color::from_rgba(88, 94, 118, 235),
-                        );
+                        if i != SAVES_OPTIONS - 1 {
+                            draw_rectangle(
+                                x + row_pad_x + 635.0 * scale,
+                                ry - 15.0 * scale,
+                                89.0 * scale,
+                                row_h,
+                                Color::from_rgba(88, 94, 118, 235),
+                            );
+                        }
                     }
                 }
 

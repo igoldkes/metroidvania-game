@@ -2076,7 +2076,53 @@ impl GameState {
             }
             StartupState::Saves => {
                 // save file navigation with mouse
-                // todo!();
+                if self.mouse_moved_buffer > 0.0 {
+                    let mouse_pos = mouse_position();
+                    let mouse_x = mouse_pos.0;
+                    let mouse_y = mouse_pos.1;
+
+                    // check mouse's x position
+                    if mouse_pos.0 > 278.0 && mouse_pos.0 < 913.0 {
+                        self.save_file_menu_role = 0;
+                        if mouse_pos.1 > 287.0 && mouse_pos.1 < 325.0 {
+                            self.startup_menu_role = 0;
+                        } else if mouse_pos.1 > 325.0 && mouse_pos.1 < 363.0 {
+                            self.startup_menu_role = 1;
+                        } else if mouse_pos.1 > 363.0 && mouse_pos.1 < 401.0 {
+                            self.startup_menu_role = 2;
+                        } else if mouse_pos.1 > 401.0 && mouse_pos.1 < 439.0 {
+                            self.startup_menu_role = 3;
+                        } else if mouse_pos.1 > 439.0 && mouse_pos.1 < 477.0 {
+                            self.startup_menu_role = 4;
+                        }
+                    }
+                    if mouse_pos.0 >= 913.0 && mouse_pos.0 < 1002.0 {
+                        if mouse_pos.1 > 287.0 && mouse_pos.1 < 325.0 {
+                            if matches!(self.save_1, SaveFile::Save) {
+                                self.startup_menu_role = 0;
+                                self.save_file_menu_role = 1;
+                            }
+                        } else if mouse_pos.1 > 325.0 && mouse_pos.1 < 363.0 {
+                            if matches!(self.save_2, SaveFile::Save) {
+                                self.startup_menu_role = 1;
+                                self.save_file_menu_role = 1;
+                            }
+                        } else if mouse_pos.1 > 363.0 && mouse_pos.1 < 401.0 {
+                            if matches!(self.save_3, SaveFile::Save) {
+                                self.startup_menu_role = 2;
+                                self.save_file_menu_role = 1;
+                            }
+                        } else if mouse_pos.1 > 401.0 && mouse_pos.1 < 439.0 {
+                            if matches!(self.save_4, SaveFile::Save) {
+                                self.startup_menu_role = 3;
+                                self.save_file_menu_role = 1;
+                            }
+                        } else if mouse_pos.1 > 439.0 && mouse_pos.1 < 477.0 {
+                            self.startup_menu_role = 4;
+                            self.save_file_menu_role = 0;
+                        }
+                    }
+                }
                 // save file navigation with mouse done
 
                 // save file navigation with keyboard
